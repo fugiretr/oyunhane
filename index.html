@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101827">
+<title>OYUNHANE — Tarayıcı Oyunları</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#111c2e;--panel2:#18263b;--muted:#9aabc2;--blue:#60a5fa;--line:#26364e}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -20%,#1d3b62 0,transparent 48%),var(--bg);color:#f8fafc;font:15px/1.5 Inter,system-ui,Segoe UI,Arial,sans-serif}
+.wrap{width:min(1120px,calc(100% - 32px));margin:auto}.top{height:76px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff12}
+.brand{display:flex;align-items:center;gap:11px;font-size:23px;font-weight:900;letter-spacing:1px}.logo{width:40px;height:40px;border-radius:13px;background:linear-gradient(135deg,#60a5fa,#2563eb);display:grid;place-items:center;font-size:22px;box-shadow:0 8px 24px #2563eb55}
+.pill{font-size:11px;font-weight:800;letter-spacing:1px;color:#86efac;background:#14532d55;border:1px solid #22c55e55;padding:5px 10px;border-radius:99px}
+.hero{margin:30px 0 25px;padding:32px;border:1px solid #ffffff14;border-radius:24px;background:linear-gradient(115deg,#172c49,#17243a 58%,#172033);position:relative;overflow:hidden}
+.hero:after{content:"🎮";position:absolute;right:8%;top:5px;font-size:130px;opacity:.12;transform:rotate(-15deg)}
+.eyebrow{color:#93c5fd;font-size:12px;font-weight:800;letter-spacing:2px}.hero h1{font-size:clamp(30px,5vw,48px);line-height:1.08;margin:10px 0}.hero p{color:#c4d2e4;max-width:530px;margin:0 0 22px}
+.search{display:flex;align-items:center;gap:10px;max-width:560px;background:#0b1424;border:1px solid #40516b;border-radius:13px;padding:0 15px}.search input{width:100%;padding:14px 0;background:transparent;border:0;outline:0;color:white;font:inherit}.search input::placeholder{color:#8293aa}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin:28px 0 14px}.section-head h2{font-size:20px;margin:0}.muted{color:var(--muted);font-size:13px}
+.categories{display:flex;gap:9px;flex-wrap:wrap}.cat{border:1px solid var(--line);background:#111c2e;color:#cbd5e1;border-radius:99px;padding:8px 14px;cursor:pointer;font:inherit}.cat.active,.cat:hover{background:#1d4ed8;border-color:#3b82f6;color:white}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}.card{border:1px solid #ffffff14;background:linear-gradient(160deg,#17263b,#101a2a);border-radius:17px;overflow:hidden;transition:.18s;cursor:pointer}.card:hover{transform:translateY(-4px);border-color:#60a5fa88;box-shadow:0 12px 30px #0004}.thumb{height:135px;display:grid;place-items:center;font-size:58px;background:radial-gradient(circle at 50% 35%,#355d8e,#1a2d49 70%)}.card:nth-child(2) .thumb{background:radial-gradient(circle,#6b432d,#30233a)}.card:nth-child(3) .thumb{background:radial-gradient(circle,#235b55,#192d40)}.card:nth-child(4) .thumb{background:radial-gradient(circle,#51407b,#22233f)}
+.card-body{padding:13px}.card h3{font-size:15px;margin:0 0 4px}.card p{font-size:12px;color:var(--muted);margin:0 0 11px}.tag{font-size:10px;color:#86efac;background:#14532d55;padding:4px 8px;border-radius:99px}.tag.soon{color:#cbd5e1;background:#334155}
+.empty{display:none;text-align:center;color:var(--muted);padding:35px;border:1px dashed var(--line);border-radius:15px}
+footer{margin:45px 0 20px;padding:20px 0;border-top:1px solid #ffffff12;text-align:center;color:#718198;font-size:12px}
+.modal{display:none;position:fixed;inset:0;background:#030712eF;z-index:5;padding:18px;align-items:center;justify-content:center}.modal.show{display:flex}.gamebox{width:min(620px,100%);background:#111c2e;border:1px solid #40516b;border-radius:20px;padding:20px;text-align:center;box-shadow:0 20px 80px #0009}.game-top{display:flex;justify-content:space-between;align-items:center}.game-top h2{margin:0}.close{border:0;background:#26364e;color:white;border-radius:9px;padding:8px 12px;cursor:pointer}.score{font-size:42px;font-weight:900;color:#93c5fd;margin:18px 0 4px}.click-target{width:170px;height:170px;border:0;border-radius:50%;background:linear-gradient(145deg,#60a5fa,#2563eb);font-size:62px;cursor:pointer;box-shadow:0 12px 35px #2563eb66;transition:transform .08s}.click-target:active{transform:scale(.94)}.primary{border:0;background:#2563eb;color:white;border-radius:10px;padding:11px 17px;font-weight:700;cursor:pointer}.game-note{color:var(--muted);font-size:13px}
+@media(max-width:800px){.grid{grid-template-columns:repeat(2,1fr)}.hero{padding:25px}.hero:after{right:-5%;font-size:100px}}
+@media(max-width:420px){.grid{gap:10px}.thumb{height:105px}.card-body{padding:10px}.brand{font-size:19px}}
+</style>
+</head>
+<body>
+<header class="wrap top">
+  <div class="brand"><div class="logo">🎮</div> OYUNHANE</div>
+  <span class="pill">BETA</span>
+</header>
+<main class="wrap">
+  <section class="hero">
+    <div class="eyebrow">OYUNUN ADRESİ BURASI</div>
+    <h1>Canın mı sıkıldı?</h1>
+    <p>Oyununu seç, tarayıcıdan hemen oynamaya başla. İndirme yok, bekleme yok.</p>
+    <label class="search"><span>⌕</span><input id="search" type="search" placeholder="Oyun ara..." autocomplete="off"></label>
+  </section>
+  <div class="section-head"><h2>Kategoriler</h2><span class="muted">Bir kategori seç</span></div>
+  <nav class="categories" aria-label="Oyun kategorileri">
+    <button class="cat active" data-cat="all">✨ Tümü</button>
+    <button class="cat" data-cat="skill">🎯 Beceri</button>
+    <button class="cat" data-cat="race">🏎️ Yarış</button>
+    <button class="cat" data-cat="puzzle">🧠 Zeka</button>
+    <button class="cat" data-cat="sports">⚽ Spor</button>
+  </nav>
+  <div class="section-head"><h2>Öne Çıkan Oyunlar</h2><span class="muted" id="count">4 oyun</span></div>
+  <section class="grid" id="games">
+    <article class="card" data-name="Tıklama Ustası" data-cat="skill" data-play="yes">
+      <div class="thumb">🖱️</div><div class="card-body"><h3>Tıklama Ustası</h3><p>10 saniyede kaç kez tıklayabilirsin?</p><span class="tag">● Oynanabilir</span></div>
+    </article>
+    <article class="card" data-name="Araba Yarışı" data-cat="race">
+      <div class="thumb">🏎️</div><div class="card-body"><h3>Araba Yarışı</h3><p>Motorları çalıştırmaya hazırlan!</p><span class="tag soon">Yakında</span></div>
+    </article>
+    <article class="card" data-name="Zeka Küpü" data-cat="puzzle">
+      <div class="thumb">🧩</div><div class="card-body"><h3>Zeka Küpü</h3><p>Bulmacaları çöz ve ilerle.</p><span class="tag soon">Yakında</span></div></article>
+    <article class="card" data-name="Mini Futbol" data-cat="sports">
+      <div class="thumb">⚽</div><div class="card-body"><h3>Mini Futbol</h3><p>Sahaya çıkmaya hazırlan!</p><span class="tag soon">Yakında</span></div></article>
+  </section>
+  <div class="empty" id="empty">Bu aramayla eşleşen oyun bulunamadı.</div>
+</main>
+<footer class="wrap">OYUNHANE © 2026 · İYİ EĞLENCELER<br>Bu site bağımsız bir oyun projesidir.</footer>
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Tıklama Ustası">
+  <div class="gamebox">
+    <div class="game-top"><h2>🖱️ Tıklama Ustası</h2><button class="close" id="close">Kapat ✕</button></div>
+    <p class="game-note">10 saniye içinde mavi butona olabildiğince çok tıkla!</p>
+    <div class="score" id="score">0</div><div class="game-note" id="timer">Başlamak için butona bas</div>
+    <p><button class="click-target" id="target" aria-label="Tıkla">👆</button></p>
+    <button class="primary" id="restart">Yeniden başlat</button>
+    <p class="game-note" id="result">Hazır mısın?</p>
+  </div>
+</div>
+<script>
+const search=document.querySelector('#search'),cards=[...document.querySelectorAll('.card')],empty=document.querySelector('#empty'),count=document.querySelector('#count');
+let category='all';
+function filter(){let q=search.value.toLocaleLowerCase('tr'),shown=0;cards.forEach(c=>{let ok=c.dataset.name.toLocaleLowerCase('tr').includes(q)&&(category==='all'||c.dataset.cat===category);c.style.display=ok?'':'none';if(ok)shown++});empty.style.display=shown?'none':'block';count.textContent=shown+' oyun'}
+search.addEventListener('input',filter);
+document.querySelectorAll('.cat').forEach(b=>b.addEventListener('click',()=>{document.querySelector('.cat.active').classList.remove('active');b.classList.add('active');category=b.dataset.cat;filter()}));
+const modal=document.querySelector('#modal'),scoreEl=document.querySelector('#score'),timerEl=document.querySelector('#timer'),result=document.querySelector('#result'),target=document.querySelector('#target');
+let score=0,remaining=10,playing=false,interval=null;
+function reset(){clearInterval(interval);score=0;remaining=10;playing=false;scoreEl.textContent='0';timerEl.textContent='Başlamak için butona bas';result.textContent='Hazır mısın?'}
+function start(){if(playing)return;reset();playing=true;timerEl.textContent='10 saniye';interval=setInterval(()=>{remaining--;timerEl.textContent=remaining+' saniye';if(remaining<=0){clearInterval(interval);playing=false;timerEl.textContent='Süre bitti!';result.textContent='Harika! '+score+' kez tıkladın.'}},1000)}
+target.addEventListener('click',()=>{if(!playing)start();if(playing){score++;scoreEl.textContent=score}});
+function openGame(){modal.classList.add('show');reset()}
+cards[0].addEventListener('click',openGame);
+document.querySelector('#close').addEventListener('click',()=>{modal.classList.remove('show');reset()});
+document.querySelector('#restart').addEventListener('click',reset);
+modal.addEventListener('click',e=>{if(e.target===modal){modal.classList.remove('show');reset()}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){modal.classList.remove('show');reset()}});
+</script>
+</body>
+</html>
