@@ -120,7 +120,7 @@ main {
 
 .games {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(230px, 260px));
     gap: 20px;
 }
 
@@ -146,6 +146,20 @@ main {
     justify-content: center;
     font-size: 60px;
     margin-bottom: 18px;
+}
+
+.game-thumb {
+    aspect-ratio: 3 / 2;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 18px;
+    background: #171827;
+}
+.game-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 
 .card h2 {
@@ -281,41 +295,15 @@ footer {
 
 <div class="categories">
     <button class="category active" onclick="filterCategory('all', this)">Tümü</button>
-    <button class="category" onclick="filterCategory('action', this)">Aksiyon</button>
-    <button class="category" onclick="filterCategory('fps', this)">FPS</button>
-    <button class="category" onclick="filterCategory('other', this)">Diğer</button>
+    <button class="category" onclick="filterCategory('rhythm', this)">Ritim</button>
 </div>
 
 <h2 class="section-title">🎮 Oyunlar</h2>
 
 <div class="games">
 
-    <div class="card" data-name="counter strike 1.6 cs16" data-category="fps action">
-        <div class="game-icon">🔫</div>
-        <h2>Counter-Strike 1.6</h2>
-        <p>Klasik Counter-Strike deneyimini tarayıcında oyna!</p>
-        <span class="tag">FPS</span>
-
-        <button class="play-button"
-            onclick="openGame('https://portal.dersarasi.workers.dev/game/cs16-web','Counter-Strike 1.6')"
-        >OYNA</button>
-    </div>
-
-    <div class="card" data-name="minecraft eaglercraft" data-category="action other">
-        <div class="game-icon">⛏️</div>
-        <h2>Minecraft</h2>
-        <p>Tarayıcıda Minecraft deneyimi.</p>
-        <span class="tag">Macera</span>
-
-        <a class="play-button"
-            href="https://eaglercraft.com"
-            target="_blank"
-            rel="noopener noreferrer"
-        >OYNA</a>
-    </div>
-
-    <div class="card" data-name="friday night funkin fnf ritim" data-category="other">
-        <div class="game-icon">🎤</div>
+    <div class="card" data-name="friday night funkin fnf ritim" data-category="rhythm">
+        <div class="game-thumb"><img src="images/fnf.jpg" alt="Friday Night Funkin'" loading="lazy"></div>
         <h2>Friday Night Funkin'</h2>
         <p>Ritim oyunu: oklara zamanında bas!</p>
         <span class="tag">Ritim</span>
