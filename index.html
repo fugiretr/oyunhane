@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#10111b">
-<title>OYUNHANE - Ücretsiz Tarayıcı Oyunları</title>
+<title>OYUNHANE - Tarayıcı Oyunları</title>
 
 <style>
 * {
@@ -16,7 +16,7 @@
 
 body {
     background: #10111b;
-    color: #fff;
+    color: white;
     font-family: Arial, sans-serif;
     min-height: 100vh;
 }
@@ -72,15 +72,11 @@ main {
 }
 
 .search-area {
-    display: flex;
-    gap: 12px;
     margin-top: 25px;
-    flex-wrap: wrap;
 }
 
 .search-area input {
-    flex: 1;
-    min-width: 200px;
+    width: 100%;
     padding: 14px;
     background: #10111b;
     color: white;
@@ -176,6 +172,8 @@ main {
     font-weight: bold;
     cursor: pointer;
     font-size: 15px;
+    text-align: center;
+    text-decoration: none;
 }
 
 .play-button:hover {
@@ -233,46 +231,50 @@ footer {
 
 <main>
 
-    <section class="hero">
-        <h1>Oyun dünyasına hoş geldin! 🎮</h1>
-        <p>Oyununu seç, tek tıkla eğlenceye başla.</p>
+<section class="hero">
+    <h1>Oyun dünyasına hoş geldin! 🎮</h1>
+    <p>Oyununu seç, tek tıkla eğlenceye başla.</p>
 
-        <div class="search-area">
-            <input
-                type="text"
-                id="searchInput"
-                placeholder="Oyun ara..."
-                oninput="filterGames()"
-            >
-        </div>
-    </section>
+    <div class="search-area">
+        <input
+            type="text"
+            id="searchInput"
+            placeholder="Oyun ara..."
+            oninput="filterGames()"
+        >
+    </div>
+</section>
 
-    <h2 class="section-title">Kategoriler</h2>
+<h2 class="section-title">Kategoriler</h2>
 
-    <div class="categories">
-        <button class="category active" onclick="filterCategory('all', this)">Tümü</button>
-        <button class="category" onclick="filterCategory('action', this)">Aksiyon</button>
-        <button class="category" onclick="filterCategory('fps', this)">FPS</button>
-        <button class="category" onclick="filterCategory('other', this)">Diğer</button>
+<div class="categories">
+    <button class="category active" onclick="filterCategory('all', this)">Tümü</button>
+    <button class="category" onclick="filterCategory('action', this)">Aksiyon</button>
+    <button class="category" onclick="filterCategory('fps', this)">FPS</button>
+    <button class="category" onclick="filterCategory('other', this)">Diğer</button>
+</div>
+
+<h2 class="section-title">🎮 Oyunlar</h2>
+
+<div class="games">
+
+    <div class="card" data-name="counter strike 1.6 cs16" data-category="fps action">
+        <div class="game-icon">🔫</div>
+        <h2>Counter-Strike 1.6</h2>
+        <p>Klasik Counter-Strike deneyimini tarayıcında oyna!</p>
+        <span class="tag">FPS</span>
+
+        <a
+            class="play-button"
+            href="https://portal.dersarasi.workers.dev/game/cs16-web"
+            target="_blank"
+            rel="noopener noreferrer"
+        >OYNA</a>
     </div>
 
-    <h2 class="section-title">🎮 Oyunlar</h2>
+</div>
 
-    <div class="games" id="games">
-
-        <div class="card" data-name="counter strike 1.6 cs16" data-category="fps action">
-            <div class="game-icon">🔫</div>
-            <h2>Counter-Strike 1.6</h2>
-            <p>Klasik Counter-Strike deneyimini tarayıcında oyna!</p>
-            <span class="tag">FPS</span>
-            <button class="play-button" onclick="openGame()">OYNA</button>
-        </div>
-
-        <!-- Yeni HTML5 oyunlarını buraya ekleyeceğiz. -->
-
-    </div>
-
-    <p class="no-results" id="noResults">Aradığın oyun bulunamadı.</p>
+<p class="no-results" id="noResults">Aradığın oyun bulunamadı.</p>
 
 </main>
 
@@ -281,12 +283,6 @@ footer {
 </footer>
 
 <script>
-const gameURL = "https://portal.dersarasi.workers.dev/game/cs16-web";
-
-function openGame() {
-    window.open(gameURL, "_blank", "noopener");
-}
-
 let selectedCategory = "all";
 
 function filterCategory(category, button) {
