@@ -327,11 +327,23 @@ footer {
 <div class="categories">
     <button class="category active" onclick="filterCategory('all', this)">Tümü</button>
     <button class="category" onclick="filterCategory('rhythm', this)">Ritim</button>
+    <button class="category" onclick="filterCategory('shooter', this)">Nişancı</button>
 </div>
 
 <h2 class="section-title">🎮 Oyunlar</h2>
 
 <div class="games">
+
+    <div class="card" data-name="nisanci arena online fps cs nisanci" data-category="shooter">
+        <div class="game-thumb"><img src="images/nisanci.jpg" alt="Nişancı Arena" loading="lazy"></div>
+        <h2>Nişancı Arena</h2>
+        <p>Online takım nişancı oyunu: Mavi ya da Kırmızı takımda savaş!</p>
+        <span class="tag">Nişancı • Online</span>
+
+        <button class="play-button"
+            onclick="openGame('nisanci.html','Nişancı Arena')"
+        >OYNA</button>
+    </div>
 
     <div class="card" data-name="friday night funkin fnf ritim" data-category="rhythm">
         <div class="game-thumb"><img src="images/fnf.jpg" alt="Friday Night Funkin'" loading="lazy"></div>

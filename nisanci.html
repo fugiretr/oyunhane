@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nişancı Arena</title>
+<style>
+html, body { margin:0; height:100%; background:#000; overflow:hidden; font-family:Arial,sans-serif; color:#fff; user-select:none; -webkit-user-select:none; }
+canvas { position:fixed; display:block; }
+#view { image-rendering:pixelated; }
+#menu { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(8,9,16,.92); z-index:5; }
+#menu .box { width:min(440px,92vw); background:#171827; border:1px solid #383254; border-radius:16px; padding:26px; text-align:center; }
+#menu h1 { margin:0 0 6px; font-size:30px; color:#8b7cff; }
+#menu p { margin:6px 0; color:#aaaabd; font-size:14px; line-height:1.5; }
+#menu input { width:100%; box-sizing:border-box; margin:14px 0 10px; padding:12px; background:#10111b; color:#fff; border:1px solid #44415f; border-radius:9px; font-size:15px; outline:none; }
+#menu input:focus { border-color:#8b7cff; }
+#menu button { width:100%; padding:13px; background:#7967f5; color:#fff; border:0; border-radius:9px; font-weight:bold; font-size:16px; cursor:pointer; }
+#menu button:hover { background:#9385ff; }
+#menu .keys { margin-top:14px; font-size:12px; color:#8a8ca3; text-align:left; line-height:1.7; }
+#status { margin-top:10px; font-size:12px; color:#8a8ca3; min-height:16px; }
+</style>
+</head>
+<body>
+
+<canvas id="view"></canvas>
+<canvas id="hud"></canvas>
+
+<div id="menu">
+  <div class="box">
+    <h1>NİŞANCI ARENA</h1>
+    <p>İki takım, tek harita. Düşman takımı vur, hayatta kal!</p>
+    <input id="nameInput" maxlength="14" placeholder="Takma adın" autocomplete="off">
+    <button id="startBtn">OYUNA GİR</button>
+    <div id="status"></div>
+    <div class="keys">
+      <b>W A S D</b> hareket &nbsp; <b>Fare</b> bakış &nbsp; <b>Sol tık / Boşluk</b> ateş<br>
+      <b>R</b> şarjör değiştir &nbsp; <b>Tab</b> skor tablosu &nbsp; <b>←/→</b> fare yoksa dönüş
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ================= Ayarlar ================= */
+const DB_URL = "https://oyunhane-9a3bd-default-rtdb.europe-west1.firebasedatabase.app";
+const W = 480, H = 270, HALF = H / 2;
+const FOV_PLANE = Math.tan(Math.PI / 6);      // ~60 derece
+const MOVE_SPEED = 3.2, RADIUS = 0.2;
+const MAG = 30, DAMAGE = 20, FIRE_MS = 120, RELOAD_MS = 1500, RESPAWN_MS = 3000;
+const SEND_MS = 200, POLL_MS = 250, STALE_MS = 5000;
+const TEAM_NAMES = ["MAVİ", "KIRMIZI"];
+const TEAM_COLORS = ["#4aa3ff", "#ff5b5b"];
+
+/* ================= Harita ================= */
+const N = 24;
+const MAP = [];
+for (let y = 0; y < N; y++) MAP.push(new Array(N).fill(0));
+for (let i = 0; i < N; i++) { MAP[0][i] = 1; MAP[N-1][i] = 1; MAP[i][0] = 1; MAP[i][N-1] = 1; }
+function box(x, y, w, h, t) { for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) MAP[yy][xx] = t; }
+function mir(x, y, w, h, t) { box(x, y, w, h, t); box(N-x-w, y, w, h, t); box(x, N-y-h, w, h, t); box(N-x-w, N-y-h, w, h, t); }
+mir(4, 4, 3, 2, 2);
+mir(9, 2, 1, 4, 3);
+mir(5, 9, 4, 1, 4);
+mir(10, 10, 2, 2, 1);
+mir(2, 11, 2, 1, 3);
+mir(8, 6, 3, 1, 2);
+const SPAWNS = [
+  [[1.5,1.5],[2.5,1.5],[1.5,2.5],[2.5,2.5],[3.5,1.5]],
+  [[22.5,22.5],[21.5,22.5],[22.5,21.5],[21.5,21.5],[20.5,22.5]]
+];
+
+/* ================= Dokular ================= */
+function pack(r, g, b, a) { return ((a === undefined ? 255 : a) << 24) | (b << 16) | (g << 8) | r; }
+function makeWallTex(base, line, seed) {
+  const t = new Uint32Array(64 * 64);
+  for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) {
+    const row = (y / 16) | 0, off = (row % 2) * 16, bx = (x + off) % 32;
+    const mortar = (y % 16) < 2 || bx < 2;
+    const n = (((x * 7349 + y * 9157 + seed * 131) ^ (x * y)) & 15) - 8;
+    const c = mortar ? line : base;
+    t[y * 64 + x] = pack(Math.max(0, Math.min(255, c[0] + n)), Math.max(0, Math.min(255, c[1] + n)), Math.max(0, Math.min(255, c[2] + n)));
+  }
+  return t;
+}
+const WALL_TEX = [null,
+  makeWallTex([150,150,158], [95,95,105], 1),
+  makeWallTex([170,95,70],   [90,55,45],  2),
+  makeWallTex([85,130,150],  [50,75,90],  3),
+  makeWallTex([160,150,95],  [95,90,55],  4)
+];
+function makeSprite(color) {
+  const c = document.createElement('canvas'); c.width = 32; c.height = 64;
+  const g = c.getContext('2d');
+  g.fillStyle = '#23242e'; g.fillRect(10, 42, 5, 20); g.fillRect(17, 42, 5, 20);
+  g.fillStyle = '#111'; g.fillRect(9, 60, 6, 4); g.fillRect(17, 60, 6, 4);
+  g.fillStyle = color; g.fillRect(8, 20, 16, 24);
+  g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(8, 20, 16, 4);
+  g.fillStyle = color; g.fillRect(3, 22, 5, 17); g.fillRect(24, 22, 5, 17);
+  g.fillStyle = '#e8c39a'; g.fillRect(3, 38, 5, 4); g.fillRect(24, 38, 5, 4);
+  g.fillStyle = '#e8c39a'; g.beginPath(); g.arc(16, 12, 8, 0, 7); g.fill();
+  g.fillStyle = color; g.beginPath(); g.arc(16, 10, 9, Math.PI, 0); g.fill(); g.fillRect(7, 9, 18, 3);
+  g.fillStyle = '#222'; g.fillRect(12, 13, 2, 2); g.fillRect(18, 13, 2, 2);
+  g.fillStyle = '#15161d'; g.fillRect(22, 30, 10, 4);
+  return new Uint32Array(g.getImageData(0, 0, 32, 64).data.buffer);
+}
+const SPRITES = [makeSprite('#3b82f6'), makeSprite('#e04545')];
+
+const CEIL = new Uint32Array(H), FLOOR = new Uint32Array(H);
+for (let y = 0; y < H; y++) {
+  if (y < HALF) { const k = y / HALF; CEIL[y] = pack(28 + 30 * k | 0, 32 + 32 * k | 0, 52 + 40 * k | 0); }
+  else { const k = (y - HALF) / HALF; FLOOR[y] = pack(60 + 50 * k | 0, 52 + 40 * k | 0, 44 + 30 * k | 0); }
+}
+
+/* ================= Durum ================= */
+const view = document.getElementById('view'), hud = document.getElementById('hud');
+const vctx = view.getContext('2d'), hctx = hud.getContext('2d');
+view.width = W; view.height = H;
+const img = vctx.createImageData(W, H);
+const buf = new Uint32Array(img.data.buffer);
+const zbuf = new Float32Array(W);
+
+function rid() { return Math.random().toString(36).slice(2, 8); }
+const me = { id: rid(), name: 'Oyuncu', team: 0, x: 2, y: 2, a: 0, hp: 100, k: 0, d: 0, by: '', h: {},
+  dead: false, respawnAt: 0, protectUntil: 0, ammo: MAG, reloadUntil: 0, lastShot: 0, moving: false };
+const others = new Map();
+const bots = [];
+const feed = [];
+let started = false, online = false, netFail = 0, seq = 0, dirty = true, lastSend = 0;
+let hitMarker = 0, dmgFlash = 0, kick = 0, bob = 0, flashUntil = 0, lastDamager = '';
+const keys = {};
+let firing = false, mouseSeen = false;
+const labels = [];
+
+function isWall(x, y) { const mx = Math.floor(x), my = Math.floor(y); return mx < 0 || my < 0 || mx >= N || my >= N || MAP[my][mx] > 0; }
+function blocked(x, y) { return isWall(x - RADIUS, y - RADIUS) || isWall(x + RADIUS, y - RADIUS) || isWall(x - RADIUS, y + RADIUS) || isWall(x + RADIUS, y + RADIUS); }
+
+function castDist(ox, oy, dx, dy) {
+  let mx = ox | 0, my = oy | 0;
+  const ddx = Math.abs(1 / dx), ddy = Math.abs(1 / dy);
+  let sx, sy, sdx, sdy;
+  if (dx < 0) { sx = -1; sdx = (ox - mx) * ddx; } else { sx = 1; sdx = (mx + 1 - ox) * ddx; }
+  if (dy < 0) { sy = -1; sdy = (oy - my) * ddy; } else { sy = 1; sdy = (my + 1 - oy) * ddy; }
+  let side = 0;
+  for (let i = 0; i < 80; i++) {
+    if (sdx < sdy) { sdx += ddx; mx += sx; side = 0; } else { sdy += ddy; my += sy; side = 1; }
+    if (mx < 0 || my < 0 || mx >= N || my >= N || MAP[my][mx] > 0) return side === 0 ? sdx - ddx : sdy - ddy;
+  }
+  return 99;
+}
+
+/* ================= Ses ================= */
+let ac = null, noiseBuf = null;
+function initAudio() {
+  if (ac) return;
+  try {
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    noiseBuf = ac.createBuffer(1, ac.sampleRate * 0.25, ac.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+  } catch (e) { ac = null; }
+}
+function snd(kind) {
+  if (!ac) return;
+  try {
+    const t = ac.currentTime, g = ac.createGain();
+    g.connect(ac.destination);
+    if (kind === 'shot') {
+      const s = ac.createBufferSource(); s.buffer = noiseBuf;
+      const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 2200;
+      g.gain.setValueAtTime(.35, t); g.gain.exponentialRampToValueAtTime(.001, t + .14);
+      s.connect(f); f.connect(g); s.start(t); s.stop(t + .15);
+    } else {
+      const o = ac.createOscillator();
+      o.type = kind === 'death' ? 'sawtooth' : 'square';
+      o.frequency.setValueAtTime(kind === 'hit' ? 900 : kind === 'death' ? 160 : 500, t);
+      g.gain.setValueAtTime(.12, t); g.gain.exponentialRampToValueAtTime(.001, t + (kind === 'death' ? .4 : .08));
+      o.connect(g); o.start(t); o.stop(t + .45);
+    }
+  } catch (e) {}
+}
+
+/* ================= Ağ ================= */
+const r2 = v => Math.round(v * 100) / 100;
+function snapshot() {
+  return JSON.stringify({ n: me.name, c: me.team, x: r2(me.x), y: r2(me.y), a: r2(me.a), p: Math.max(0, me.hp), k: me.k, d: me.d, b: me.by, h: me.h, s: ++seq, t: Date.now() });
+}
+async function send(now) {
+  lastSend = now; dirty = false;
+  try { await fetch(DB_URL + '/players/' + me.id + '.json', { method: 'PUT', body: snapshot() }); } catch (e) {}
+}
+function addFeed(text) { feed.push({ text, until: performance.now() + 5000 }); if (feed.length > 5) feed.shift(); }
+function nameOf(id) { if (id === me.id) return me.name; const o = others.get(id); return o ? o.name : '?'; }
+
+function applyDamage(amount, byId) {
+  if (me.dead || performance.now() < me.protectUntil) return;
+  me.hp -= amount; dmgFlash = 1; lastDamager = byId; snd('hit'); dirty = true;
+  if (me.hp <= 0) {
+    me.hp = 0; me.dead = true; me.d++; me.by = byId; me.respawnAt = performance.now() + RESPAWN_MS;
+    snd('death'); addFeed(nameOf(byId) + '  ›  ' + me.name);
+  }
+}
+
+function handleData(data, now) {
+  const seen = new Set();
+  for (const id in data) {
+    if (id === me.id) continue;
+    const r = data[id];
+    if (!r || typeof r !== 'object' || typeof r.x !== 'number') continue;
+    seen.add(id);
+    let o = others.get(id);
+    const hitsOnMe = (r.h && r.h[me.id]) | 0;
+    if (!o) {
+      o = { id, dx: r.x, dy: r.y, s: -1, seenAt: now, lastD: r.d | 0, lastHit: hitsOnMe };
+      others.set(id, o);
+    }
+    if (r.s !== o.s) { o.s = r.s; o.seenAt = now; }
+    o.name = String(r.n || '?').slice(0, 14); o.team = r.c === 1 ? 1 : 0;
+    o.x = r.x; o.y = r.y; o.a = r.a || 0; o.hp = r.p; o.k = r.k | 0; o.d = r.d | 0; o.by = r.b || '';
+    if (hitsOnMe > o.lastHit) {
+      const delta = hitsOnMe - o.lastHit; o.lastHit = hitsOnMe;
+      if (o.team !== me.team) applyDamage(delta * DAMAGE, id);
+    }
+    if (o.d > o.lastD) {
+      o.lastD = o.d;
+      if (o.by) addFeed(nameOf(o.by) + '  ›  ' + o.name);
+      if (o.by === me.id) { me.k++; dirty = true; snd('hit'); }
+    }
+  }
+  for (const [id, o] of others) {
+    const age = now - o.seenAt;
+    if (!seen.has(id) || age > 60000) {
+      if (!seen.has(id)) { others.delete(id); continue; }
+      fetch(DB_URL + '/players/' + id + '.json', { method: 'DELETE' }).catch(() => {});
+      others.delete(id);
+    }
+  }
+}
+function fresh(o, now) { return now - o.seenAt < STALE_MS; }
+
+async function poll() {
+  try {
+    const r = await fetch(DB_URL + '/players.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error('http ' + r.status);
+    const data = (await r.json()) || {};
+    netFail = 0;
+    if (!online) { online = true; bots.length = 0; }
+    handleData(data, performance.now());
+  } catch (e) {
+    if (++netFail >= 3 && online) { online = false; }
+    if (netFail >= 2 && !online && !bots.length && started) spawnBots();
+  }
+  setTimeout(poll, POLL_MS);
+}
+
+async function pickTeam() {
+  try {
+    const r = await fetch(DB_URL + '/players.json', { cache: 'no-store' });
+    const data = (await r.json()) || {};
+    const now = Date.now(), c = [0, 0];
+    for (const id in data) { const p = data[id]; if (p && typeof p.t === 'number' && Math.abs(now - p.t) < 10000) c[p.c === 1 ? 1 : 0]++; }
+    return c[0] <= c[1] ? 0 : 1;
+  } catch (e) { return Math.random() < .5 ? 0 : 1; }
+}
+
+/* ================= Botlar (çevrimdışı antrenman) ================= */
+function freeCell() { for (let i = 0; i < 200; i++) { const x = 1.5 + Math.floor(Math.random() * (N - 2)), y = 1.5 + Math.floor(Math.random() * (N - 2)); if (!blocked(x, y)) return [x, y]; } return [12, 2]; }
+function spawnBots() {
+  for (let i = 0; i < 4; i++) {
+    const [x, y] = freeCell();
+    bots.push({ id: 'bot' + i, bot: true, name: 'Hedef ' + (i + 1), team: 1 - me.team, x, y, dx: x, dy: y, a: 0, hp: 100, tx: x, ty: y, respawn: 0 });
+  }
+}
+function updateBots(dt, now) {
+  for (const b of bots) {
+    if (b.hp <= 0) { if (now > b.respawn) { const [x, y] = freeCell(); b.x = b.dx = x; b.y = b.dy = y; b.hp = 100; } continue; }
+    if (Math.hypot(b.tx - b.x, b.ty - b.y) < .3) { const [x, y] = freeCell(); b.tx = x; b.ty = y; }
+    const a = Math.atan2(b.ty - b.y, b.tx - b.x), nx = b.x + Math.cos(a) * 1.4 * dt, ny = b.y + Math.sin(a) * 1.4 * dt;
+    if (!blocked(nx, b.y)) b.x = nx; else { b.tx = b.x; }
+    if (!blocked(b.x, ny)) b.y = ny; else { b.ty = b.y; }
+    b.a = a; b.dx = b.x; b.dy = b.y;
+  }
+}
+
+/* ================= Oyun mantığı ================= */
+function respawn() {
+  const sp = SPAWNS[me.team][Math.floor(Math.random() * SPAWNS[me.team].length)];
+  me.x = sp[0]; me.y = sp[1];
+  me.a = Math.atan2(12 - me.y, 12 - me.x);
+  me.hp = 100; me.dead = false; me.ammo = MAG; me.reloadUntil = 0;
+  me.protectUntil = performance.now() + 1500; dirty = true;
+}
+
+function targets(now) {
+  const t = [];
+  if (online) { for (const o of others.values()) if (fresh(o, now) && o.hp > 0) t.push(o); }
+  else for (const b of bots) if (b.hp > 0) t.push(b);
+  return t;
+}
+
+function shoot(now) {
+  if (me.dead || now < me.lastShot + FIRE_MS || now < me.reloadUntil) return;
+  if (me.ammo <= 0) { reload(now); return; }
+  me.lastShot = now; me.ammo--; kick = 1; flashUntil = now + 60; snd('shot');
+  const spread = me.moving ? 0.035 : 0.008, a = me.a + (Math.random() - .5) * spread;
+  const dx = Math.cos(a), dy = Math.sin(a);
+  const wall = castDist(me.x, me.y, dx, dy);
+  let best = null, bestD = wall;
+  for (const o of targets(now)) {
+    if (o.team === me.team) continue;
+    const ex = (o.bot ? o.x : o.dx) - me.x, ey = (o.bot ? o.y : o.dy) - me.y;
+    const fwd = ex * dx + ey * dy, lat = Math.abs(-ex * dy + ey * dx);
+    if (fwd > 0.2 && fwd < bestD && lat < 0.28) { best = o; bestD = fwd; }
+  }
+  if (best) {
+    hitMarker = now + 160; snd('hit');
+    if (best.bot) {
+      best.hp -= DAMAGE;
+      if (best.hp <= 0) { me.k++; best.respawn = now + RESPAWN_MS; addFeed(me.name + '  ›  ' + best.name); }
+    } else { me.h[best.id] = (me.h[best.id] || 0) + 1; dirty = true; }
+  }
+  if (me.ammo <= 0) reload(now);
+}
+function reload(now) { if (me.reloadUntil > now || me.ammo === MAG || me.dead) return; me.reloadUntil = now + RELOAD_MS; }
+
+function update(dt, now) {
+  if (me.dead) { if (now >= me.respawnAt) respawn(); }
+  else {
+    let fx = 0, fy = 0;
+    if (keys['KeyW']) fy += 1; if (keys['KeyS']) fy -= 1;
+    if (keys['KeyD']) fx += 1; if (keys['KeyA']) fx -= 1;
+    if (keys['ArrowLeft']) me.a -= 2.2 * dt; if (keys['ArrowRight']) me.a += 2.2 * dt;
+    const len = Math.hypot(fx, fy);
+    me.moving = len > 0;
+    if (len > 0) {
+      fx /= len; fy /= len;
+      const ca = Math.cos(me.a), sa = Math.sin(me.a);
+      const vx = (ca * fy - sa * fx) * MOVE_SPEED * dt, vy = (sa * fy + ca * fx) * MOVE_SPEED * dt;
+      if (!blocked(me.x + vx, me.y)) me.x += vx;
+      if (!blocked(me.x, me.y + vy)) me.y += vy;
+      bob += dt * 9; dirty = true;
+    }
+    if (me.reloadUntil && now >= me.reloadUntil) { me.ammo = MAG; me.reloadUntil = 0; }
+    if (firing || keys['Space']) shoot(now);
+  }
+  for (const o of others.values()) { const k = Math.min(1, dt * 10); o.dx += (o.x - o.dx) * k; o.dy += (o.y - o.dy) * k; }
+  if (!online) updateBots(dt, now);
+  kick = Math.max(0, kick - dt * 8); dmgFlash = Math.max(0, dmgFlash - dt * 2);
+  if (online || started) {
+    const interval = (me.moving || dirty) ? SEND_MS : 1500;
+    if (now - lastSend >= interval && started) send(now);
+  }
+}
+
+/* ================= Çizim ================= */
+function render(now) {
+  const dirX = Math.cos(me.a), dirY = Math.sin(me.a);
+  const plX = -dirY * FOV_PLANE, plY = dirX * FOV_PLANE;
+  const px = me.x, py = me.y;
+  for (let x = 0; x < W; x++) {
+    const camX = 2 * x / W - 1, rdx = dirX + plX * camX, rdy = dirY + plY * camX;
+    let mx = px | 0, my = py | 0;
+    const ddx = Math.abs(1 / rdx), ddy = Math.abs(1 / rdy);
+    let sx, sy, sdx, sdy;
+    if (rdx < 0) { sx = -1; sdx = (px - mx) * ddx; } else { sx = 1; sdx = (mx + 1 - px) * ddx; }
+    if (rdy < 0) { sy = -1; sdy = (py - my) * ddy; } else { sy = 1; sdy = (my + 1 - py) * ddy; }
+    let side = 0, type = 1;
+    for (let i = 0; i < 80; i++) {
+      if (sdx < sdy) { sdx += ddx; mx += sx; side = 0; } else { sdy += ddy; my += sy; side = 1; }
+      if (mx < 0 || my < 0 || mx >= N || my >= N) { type = 1; break; }
+      if (MAP[my][mx] > 0) { type = MAP[my][mx]; break; }
+    }
+    const perp = Math.max(0.05, side === 0 ? sdx - ddx : sdy - ddy);
+    zbuf[x] = perp;
+    const lineH = (H / perp) | 0;
+    const top = HALF - lineH / 2;
+    const y0 = Math.max(0, top | 0), y1 = Math.min(H - 1, (top + lineH) | 0);
+    let wallX = side === 0 ? py + perp * rdy : px + perp * rdx;
+    wallX -= Math.floor(wallX);
+    let texX = (wallX * 64) | 0;
+    if ((side === 0 && rdx > 0) || (side === 1 && rdy < 0)) texX = 63 - texX;
+    const tex = WALL_TEX[type];
+    const shade = Math.min(1, 1.6 / (1 + perp * 0.35)) * (side ? 0.72 : 1);
+    for (let y = 0; y < y0; y++) buf[y * W + x] = CEIL[y];
+    const step = 64 / lineH;
+    let tp = (y0 - top) * step;
+    for (let y = y0; y <= y1; y++) {
+      const c = tex[(tp & 63) * 64 + texX]; tp += step;
+      buf[y * W + x] = pack((c & 255) * shade | 0, ((c >> 8) & 255) * shade | 0, ((c >> 16) & 255) * shade | 0);
+    }
+    for (let y = y1 + 1; y < H; y++) buf[y * W + x] = FLOOR[y];
+  }
+
+  /* sprite'lar */
+  labels.length = 0;
+  const list = targets(now).filter(o => o !== me);
+  list.sort((a, b) => Math.hypot((b.bot ? b.x : b.dx) - px, (b.bot ? b.y : b.dy) - py) - Math.hypot((a.bot ? a.x : a.dx) - px, (a.bot ? a.y : a.dy) - py));
+  const ca = dirX, sa = dirY;
+  for (const o of list) {
+    const ex = (o.bot ? o.x : o.dx) - px, ey = (o.bot ? o.y : o.dy) - py;
+    const ty = ex * ca + ey * sa, lx = -ex * sa + ey * ca;
+    if (ty < 0.15) continue;
+    const screenX = (W / 2) * (1 + lx / (ty * FOV_PLANE));
+    const full = H / ty, sprH = (full * 0.9) | 0, sprW = (sprH * 0.5) | 0;
+    const bottom = HALF + full / 2, top = bottom - sprH;
+    const left = screenX - sprW / 2;
+    const tex = SPRITES[o.team];
+    const sh = Math.min(1, 1.6 / (1 + ty * 0.35));
+    for (let sx = Math.max(0, left | 0); sx < Math.min(W, left + sprW); sx++) {
+      if (ty >= zbuf[sx]) continue;
+      const tx = Math.min(31, ((sx - left) / sprW * 32) | 0);
+      for (let y = Math.max(0, top | 0); y < Math.min(H, bottom | 0); y++) {
+        const c = tex[Math.min(63, ((y - top) / sprH * 64) | 0) * 32 + tx];
+        if ((c >>> 24) < 128) continue;
+        buf[y * W + sx] = pack((c & 255) * sh | 0, ((c >> 8) & 255) * sh | 0, ((c >> 16) & 255) * sh | 0);
+      }
+    }
+    const cx = Math.max(0, Math.min(W - 1, screenX | 0));
+    labels.push({ name: o.name, team: o.team, x: screenX, y: top - 3, hp: o.hp, vis: ty < zbuf[cx] + 0.3, ty });
+  }
+  vctx.putImageData(img, 0, 0);
+}
+
+function drawHud(now) {
+  const cw = hud.width, ch = hud.height, S = cw / 480;
+  hctx.clearRect(0, 0, cw, ch);
+  hctx.textBaseline = 'alphabetic';
+
+  /* isimler */
+  for (const l of labels) {
+    if (!l.vis) continue;
+    const X = l.x * S, Y = l.y * S;
+    hctx.font = 'bold ' + (11 * S | 0) + 'px Arial'; hctx.textAlign = 'center';
+    hctx.fillStyle = 'rgba(0,0,0,.55)'; hctx.fillText(l.name, X + 1, Y + 1);
+    hctx.fillStyle = TEAM_COLORS[l.team]; hctx.fillText(l.name, X, Y);
+    const bw = 30 * S, by = Y + 3 * S;
+    hctx.fillStyle = 'rgba(0,0,0,.6)'; hctx.fillRect(X - bw / 2, by, bw, 3 * S);
+    hctx.fillStyle = '#4cd964'; hctx.fillRect(X - bw / 2, by, bw * Math.max(0, l.hp) / 100, 3 * S);
+  }
+
+  /* silah */
+  if (!me.dead) {
+    const bx = Math.sin(bob) * 4 * S * (me.moving ? 1 : 0), by = Math.abs(Math.cos(bob)) * 3 * S * (me.moving ? 1 : 0);
+    const kx = kick * 6 * S, ky = kick * 10 * S;
+    const reloading = me.reloadUntil > now;
+    const gx = cw / 2 + 60 * S + bx - kx, gy = ch - 70 * S + by + ky + (reloading ? 30 * S : 0);
+    hctx.fillStyle = '#1b1c24'; hctx.fillRect(gx - 8 * S, gy + 18 * S, 38 * S, 60 * S);
+    hctx.fillStyle = '#2b2d3a'; hctx.fillRect(gx - 14 * S, gy, 50 * S, 24 * S);
+    hctx.fillStyle = '#3a3d4e'; hctx.fillRect(gx - 14 * S, gy, 50 * S, 5 * S);
+    hctx.fillStyle = '#15161d'; hctx.fillRect(gx - 4 * S, gy - 46 * S, 12 * S, 50 * S);
+    hctx.fillStyle = '#d8a574'; hctx.fillRect(gx + 22 * S, gy + 30 * S, 22 * S, 40 * S);
+    if (now < flashUntil) {
+      hctx.fillStyle = 'rgba(255,220,90,.95)';
+      hctx.beginPath(); hctx.moveTo(gx + 2 * S, gy - 46 * S); hctx.lineTo(gx - 12 * S, gy - 66 * S); hctx.lineTo(gx + 2 * S, gy - 60 * S);
+      hctx.lineTo(gx + 2 * S, gy - 80 * S); hctx.lineTo(gx + 10 * S, gy - 60 * S); hctx.lineTo(gx + 20 * S, gy - 66 * S); hctx.closePath(); hctx.fill();
+    }
+    /* nişangah */
+    const cx = cw / 2, cy = ch / 2, g = (me.moving ? 7 : 4) * S, l = 6 * S;
+    hctx.strokeStyle = now < hitMarker ? '#ff4040' : 'rgba(80,255,120,.95)'; hctx.lineWidth = Math.max(1, S);
+    hctx.beginPath();
+    hctx.moveTo(cx - g - l, cy); hctx.lineTo(cx - g, cy); hctx.moveTo(cx + g, cy); hctx.lineTo(cx + g + l, cy);
+    hctx.moveTo(cx, cy - g - l); hctx.lineTo(cx, cy - g); hctx.moveTo(cx, cy + g); hctx.lineTo(cx, cy + g + l);
+    hctx.stroke();
+  }
+
+  if (dmgFlash > 0) { hctx.fillStyle = 'rgba(200,0,0,' + (dmgFlash * 0.35) + ')'; hctx.fillRect(0, 0, cw, ch); }
+
+  /* alt bilgi */
+  hctx.textAlign = 'left'; hctx.font = 'bold ' + (20 * S | 0) + 'px Arial';
+  hctx.fillStyle = me.hp > 30 ? '#fff' : '#ff6b6b';
+  hctx.fillText('❤ ' + Math.max(0, me.hp), 16 * S, ch - 16 * S);
+  hctx.textAlign = 'right'; hctx.fillStyle = '#fff';
+  const reloading = me.reloadUntil > now;
+  hctx.fillText(reloading ? 'ŞARJÖR...' : me.ammo + ' / ' + MAG, cw - 16 * S, ch - 16 * S);
+
+  /* skor */
+  const sc = [0, 0];
+  if (online) { for (const o of others.values()) if (fresh(o, now)) sc[o.team] += o.k; }
+  sc[me.team] += me.k;
+  hctx.textAlign = 'center'; hctx.font = 'bold ' + (16 * S | 0) + 'px Arial';
+  hctx.fillStyle = 'rgba(0,0,0,.45)'; hctx.fillRect(cw / 2 - 110 * S, 6 * S, 220 * S, 24 * S);
+  hctx.fillStyle = TEAM_COLORS[0]; hctx.fillText('MAVİ ' + sc[0], cw / 2 - 50 * S, 24 * S);
+  hctx.fillStyle = '#fff'; hctx.fillText(':', cw / 2, 24 * S);
+  hctx.fillStyle = TEAM_COLORS[1]; hctx.fillText(sc[1] + ' KIRMIZI', cw / 2 + 52 * S, 24 * S);
+  hctx.font = (11 * S | 0) + 'px Arial'; hctx.fillStyle = TEAM_COLORS[me.team]; hctx.textAlign = 'left';
+  hctx.fillText('Takımın: ' + TEAM_NAMES[me.team] + (online ? '' : '  •  çevrimdışı antrenman'), 12 * S, 20 * S);
+
+  /* kill feed */
+  hctx.textAlign = 'right'; hctx.font = 'bold ' + (12 * S | 0) + 'px Arial';
+  let fy = 54 * S;
+  for (const f of feed) { if (f.until < now) continue; hctx.fillStyle = 'rgba(0,0,0,.5)'; const w = hctx.measureText(f.text).width + 12 * S; hctx.fillRect(cw - 10 * S - w, fy - 12 * S, w, 17 * S); hctx.fillStyle = '#fff'; hctx.fillText(f.text, cw - 16 * S, fy); fy += 20 * S; }
+
+  /* mini harita */
+  const ms = 3 * S, mx0 = 10 * S, my0 = 40 * S;
+  hctx.globalAlpha = .75;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { hctx.fillStyle = MAP[y][x] ? '#555a70' : 'rgba(10,10,20,.6)'; hctx.fillRect(mx0 + x * ms, my0 + y * ms, ms, ms); }
+  hctx.globalAlpha = 1;
+  for (const o of others.values()) if (online && fresh(o, now) && o.team === me.team && o.hp > 0) { hctx.fillStyle = TEAM_COLORS[o.team]; hctx.fillRect(mx0 + o.dx * ms - 1.5 * S, my0 + o.dy * ms - 1.5 * S, 3 * S, 3 * S); }
+  hctx.fillStyle = '#fff'; hctx.fillRect(mx0 + me.x * ms - 2 * S, my0 + me.y * ms - 2 * S, 4 * S, 4 * S);
+  hctx.strokeStyle = '#fff'; hctx.beginPath(); hctx.moveTo(mx0 + me.x * ms, my0 + me.y * ms); hctx.lineTo(mx0 + (me.x + Math.cos(me.a) * 1.5) * ms, my0 + (me.y + Math.sin(me.a) * 1.5) * ms); hctx.stroke();
+
+  /* ölüm ekranı */
+  if (me.dead) {
+    hctx.fillStyle = 'rgba(0,0,0,.45)'; hctx.fillRect(0, 0, cw, ch);
+    hctx.textAlign = 'center'; hctx.fillStyle = '#ff6b6b'; hctx.font = 'bold ' + (34 * S | 0) + 'px Arial';
+    hctx.fillText('ÖLDÜN', cw / 2, ch / 2 - 6 * S);
+    hctx.fillStyle = '#fff'; hctx.font = (15 * S | 0) + 'px Arial';
+    hctx.fillText((lastDamager ? nameOf(lastDamager) + ' seni vurdu  •  ' : '') + Math.ceil(Math.max(0, me.respawnAt - now) / 1000) + ' sn sonra doğacaksın', cw / 2, ch / 2 + 22 * S);
+  }
+
+  /* skor tablosu */
+  if (keys['Tab']) {
+    const rows = [{ n: me.name, t: me.team, k: me.k, d: me.d, me: true }];
+    if (online) for (const o of others.values()) if (fresh(o, now)) rows.push({ n: o.name, t: o.team, k: o.k, d: o.d });
+    rows.sort((a, b) => b.k - a.k);
+    const bw = 300 * S, bh = (40 + rows.length * 20) * S, bx = cw / 2 - bw / 2, by = ch / 2 - bh / 2;
+    hctx.fillStyle = 'rgba(10,11,20,.88)'; hctx.fillRect(bx, by, bw, bh);
+    hctx.font = 'bold ' + (13 * S | 0) + 'px Arial'; hctx.fillStyle = '#aaaabd'; hctx.textAlign = 'left';
+    hctx.fillText('Oyuncu', bx + 12 * S, by + 22 * S); hctx.textAlign = 'right';
+    hctx.fillText('Öldürme', bx + bw - 70 * S, by + 22 * S); hctx.fillText('Ölüm', bx + bw - 12 * S, by + 22 * S);
+    rows.forEach((r, i) => {
+      const y = by + 44 * S + i * 20 * S;
+      hctx.fillStyle = TEAM_COLORS[r.t]; hctx.textAlign = 'left'; hctx.fillText((r.me ? '► ' : '') + r.n, bx + 12 * S, y);
+      hctx.fillStyle = '#fff'; hctx.textAlign = 'right'; hctx.fillText(r.k, bx + bw - 70 * S, y); hctx.fillText(r.d, bx + bw - 12 * S, y);
+    });
+  }
+
+  /* imleç kilidi uyarısı */
+  if (started && !mouseLocked() && !me.dead) {
+    hctx.textAlign = 'center'; hctx.fillStyle = 'rgba(0,0,0,.5)'; hctx.fillRect(cw / 2 - 150 * S, ch / 2 + 60 * S, 300 * S, 26 * S);
+    hctx.fillStyle = '#fff'; hctx.font = (13 * S | 0) + 'px Arial';
+    hctx.fillText('Fareyi yakalamak için ekrana tıkla', cw / 2, ch / 2 + 78 * S);
+  }
+}
+
+/* ================= Döngü ve kontroller ================= */
+function layout() {
+  const w = window.innerWidth, h = window.innerHeight;
+  let cw = w, chh = w * 9 / 16;
+  if (chh > h) { chh = h; cw = h * 16 / 9; }
+  cw = Math.floor(cw); chh = Math.floor(chh);
+  const left = Math.floor((w - cw) / 2), top = Math.floor((h - chh) / 2);
+  for (const c of [view, hud]) { c.style.width = cw + 'px'; c.style.height = chh + 'px'; c.style.left = left + 'px'; c.style.top = top + 'px'; }
+  hud.width = cw; hud.height = chh;
+}
+window.addEventListener('resize', layout); layout();
+
+function mouseLocked() { return document.pointerLockElement === hud; }
+let last = performance.now();
+function frame(t) {
+  const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (started) update(dt, now);
+  render(now);
+  if (started) drawHud(now); else hctx.clearRect(0, 0, hud.width, hud.height);
+  requestAnimationFrame(frame);
+}
+
+document.addEventListener('keydown', e => {
+  if (!started) return;
+  if (['Tab', 'Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
+  keys[e.code] = true;
+  if (e.code === 'KeyR') reload(performance.now());
+});
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; firing = false; });
+document.addEventListener('mousemove', e => {
+  if (!started || !mouseLocked()) return;
+  me.a += e.movementX * 0.0025; mouseSeen = true; dirty = true;
+});
+hud.addEventListener('mousedown', e => {
+  if (!started) return;
+  initAudio();
+  if (!mouseLocked()) { try { hud.requestPointerLock(); } catch (er) {} return; }
+  if (e.button === 0) firing = true;
+});
+window.addEventListener('mouseup', e => { if (e.button === 0) firing = false; });
+window.addEventListener('pagehide', () => { try { fetch(DB_URL + '/players/' + me.id + '.json', { method: 'DELETE', keepalive: true }); } catch (e) {} });
+
+const menu = document.getElementById('menu'), nameInput = document.getElementById('nameInput'), startBtn = document.getElementById('startBtn'), statusEl = document.getElementById('status');
+try { nameInput.value = localStorage.getItem('nisanci_name') || ''; } catch (e) {}
+async function start() {
+  startBtn.disabled = true; statusEl.textContent = 'Bağlanılıyor...';
+  me.name = (nameInput.value.trim() || 'Oyuncu' + Math.floor(Math.random() * 900 + 100)).slice(0, 14);
+  try { localStorage.setItem('nisanci_name', me.name); } catch (e) {}
+  initAudio();
+  me.team = await pickTeam();
+  respawn(); me.protectUntil = 0;
+  started = true; menu.style.display = 'none';
+  try { hud.requestPointerLock(); } catch (e) {}
+  send(performance.now()); poll();
+}
+startBtn.addEventListener('click', start);
+nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') start(); });
+
+window.__g = { me, others, bots, MAP, get online() { return online; }, get started() { return started; }, setPos(x, y, a) { me.x = x; me.y = y; me.a = a; dirty = true; }, shoot() { me.lastShot = 0; shoot(performance.now()); } };
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
