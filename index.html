@@ -31,6 +31,34 @@ header {
     gap: 20px;
 }
 
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.online {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    background: #202136;
+    border: 1px solid #34354c;
+    border-radius: 20px;
+    padding: 7px 14px;
+    font-size: 13px;
+    color: #c5c4d8;
+}
+.online b { color: white; }
+.online .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #3ddc84;
+    box-shadow: 0 0 8px #3ddc84;
+    animation: pulse 2s infinite;
+}
+@keyframes pulse { 50% { opacity: .35; } }
+
 .logo {
     font-size: 30px;
     font-weight: 900;
@@ -272,7 +300,10 @@ footer {
 
 <header>
     <div class="logo">OYUN<span>HANE</span></div>
-    <div class="header-text">Ücretsiz tarayıcı oyunları</div>
+    <div class="header-right">
+        <div class="online" id="onlineBox"><span class="dot"></span><b id="onlineCount">1</b> kişi aktif</div>
+        <div class="header-text">Ücretsiz tarayıcı oyunları</div>
+    </div>
 </header>
 
 <main>
@@ -387,6 +418,50 @@ function closeGame() {
 document.addEventListener("keydown", e => {
     if (e.key === "Escape") closeGame();
 });
+
+/* ---- Aktif kişi sayacı ----
+   Firebase Realtime Database adresini buraya yaz.
+   Boş bırakırsan sayaç görünmez. */
+const PRESENCE_URL = "https://oyunhane-9a3bd-default-rtdb.europe-west1.firebasedatabase.app";
+
+(function () {
+    if (!PRESENCE_URL) return;
+    const box = document.getElementById("onlineBox");
+    const countEl = document.getElementById("onlineCount");
+    let id = null;
+    try { id = sessionStorage.getItem("pid"); } catch (e) {}
+    if (!id) {
+        id = Math.random().toString(36).slice(2, 10);
+        try { sessionStorage.setItem("pid", id); } catch (e) {}
+    }
+    const base = PRESENCE_URL.replace(/\/$/, "") + "/visitors";
+    const ACTIVE_MS = 45000;
+
+    async function beat() {
+        try {
+            await fetch(base + "/" + id + ".json", { method: "PUT", body: String(Date.now()) });
+            const res = await fetch(base + ".json");
+            const data = (await res.json()) || {};
+            const now = Date.now();
+            let n = 0;
+            for (const key in data) {
+                const age = now - data[key];
+                if (age < ACTIVE_MS) n++;
+                else if (age > ACTIVE_MS * 4) fetch(base + "/" + key + ".json", { method: "DELETE" });
+            }
+            countEl.textContent = Math.max(n, 1);
+            box.style.display = "inline-flex";
+        } catch (e) {
+            box.style.display = "none";
+        }
+    }
+
+    beat();
+    setInterval(beat, 20000);
+    window.addEventListener("pagehide", function () {
+        fetch(base + "/" + id + ".json", { method: "DELETE", keepalive: true });
+    });
+})();
 </script>
 
 </body>
