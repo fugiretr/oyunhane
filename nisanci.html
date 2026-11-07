@@ -555,19 +555,69 @@ function render(now) {
   vctx.putImageData(img, 0, 0);
 }
 
-/* ---- silah çizimi ---- */
+/* ---- kol & silah modelleri ---- */
+const SKIN = ['#e3b084', '#b98458', '#f4cba3'];
+const SLEEVE = [['#3f78bd', '#244b7b', '#6aa2e0'], ['#bd4545', '#7b2626', '#e07070']];
+function P(pts, fill, S, line) {
+  hctx.beginPath(); hctx.moveTo(pts[0][0] * S, pts[0][1] * S);
+  for (let i = 1; i < pts.length; i++) hctx.lineTo(pts[i][0] * S, pts[i][1] * S);
+  hctx.closePath(); hctx.fillStyle = fill; hctx.fill();
+  if (line) { hctx.strokeStyle = line; hctx.lineWidth = Math.max(1, S * 0.8); hctx.stroke(); }
+}
+function RR(x, y, w, h, r, S, fill, line) {
+  x *= S; y *= S; w *= S; h *= S; r *= S;
+  hctx.beginPath(); hctx.moveTo(x + r, y);
+  hctx.arcTo(x + w, y, x + w, y + h, r); hctx.arcTo(x + w, y + h, x, y + h, r);
+  hctx.arcTo(x, y + h, x, y, r); hctx.arcTo(x, y, x + w, y, r); hctx.closePath();
+  hctx.fillStyle = fill; hctx.fill();
+  if (line) { hctx.strokeStyle = line; hctx.lineWidth = Math.max(1, S * 0.8); hctx.stroke(); }
+}
+function LG(x0, y0, x1, y1, S, c0, c1, c2) {
+  const g = hctx.createLinearGradient(x0 * S, y0 * S, x1 * S, y1 * S);
+  g.addColorStop(0, c0);
+  if (c2) { g.addColorStop(0.5, c1); g.addColorStop(1, c2); } else g.addColorStop(1, c1);
+  return g;
+}
+/* Bilekten dirseğe (ekran dışına) uzanan kol: önce çıplak ön kol, sonra kıyafet kolu */
+function limb(wx, wy, ex, ey, w0, w1, S, pal) {
+  const dx = ex - wx, dy = ey - wy, len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len, nx = -uy, ny = ux;
+  const wid = t => w0 + (w1 - w0) * t;
+  const seg = (t0, t1) => {
+    const a = wid(t0) / 2, b = wid(t1) / 2;
+    return [[wx + dx * t0 + nx * a, wy + dy * t0 + ny * a], [wx + dx * t1 + nx * b, wy + dy * t1 + ny * b],
+            [wx + dx * t1 - nx * b, wy + dy * t1 - ny * b], [wx + dx * t0 - nx * a, wy + dy * t0 - ny * a]];
+  };
+  const grad = (t, c0, c1, c2) => { const m = [wx + dx * t, wy + dy * t], h = wid(t) / 2; return LG(m[0] - nx * h, m[1] - ny * h, m[0] + nx * h, m[1] + ny * h, S, c0, c1, c2); };
+  const tc = Math.min(0.45, 24 / len), tb = Math.min(0.6, tc + 7 / len);
+  P(seg(0, tc + 0.01), grad(tc * 0.5, SKIN[2], SKIN[0], SKIN[1]), S);
+  P(seg(tc, 1), grad(0.5, pal[2], pal[0], pal[1]), S);
+  P(seg(tc, tb), grad(tc, pal[0], pal[1]), S, 'rgba(0,0,0,.35)');
+  const f = [seg(tc + (tb - tc) * 0.5, 1)[0], seg(tc + (tb - tc) * 0.5, 1)[3]];
+  hctx.strokeStyle = 'rgba(0,0,0,.25)'; hctx.lineWidth = Math.max(1, S * 0.8);
+  hctx.beginPath(); hctx.moveTo(f[0][0] * S, f[0][1] * S); hctx.lineTo(f[1][0] * S, f[1][1] * S); hctx.stroke();
+}
+/* Yumruk: avuç + 4 parmak boğumu + başparmak. thumb: -1 solda, +1 sağda */
+function fist(cx, cy, w, h, rot, thumb, S) {
+  hctx.save(); hctx.translate(cx * S, cy * S); hctx.rotate(rot);
+  RR(thumb < 0 ? -w / 2 - 6 : w / 2 - 4, -h / 2 + 1, 10, h * 0.8, 4.5, S, SKIN[0], SKIN[1]);
+  RR(-w / 2, -h / 2, w, h, 6, S, LG(-w / 2, 0, w / 2, 0, S, SKIN[2], SKIN[0], SKIN[1]), SKIN[1]);
+  const fw = w / 4;
+  for (let i = 0; i < 4; i++) RR(-w / 2 + i * fw + 0.4, -h / 2 - 5, fw - 0.8, 13, 4, S, LG(0, -h / 2 - 5, 0, -h / 2 + 8, S, SKIN[2], SKIN[0]), SKIN[1]);
+  hctx.restore();
+}
+
 function env(t, e) { return t < e ? t / e : t > 1 - e ? (1 - t) / e : 1; }
 function drawWeapon(now, S, cw, ch) {
-  const w = WEAPONS[me.wi];
+  const w = WEAPONS[me.wi], pal = SLEEVE[me.team] || SLEEVE[0];
   const walkAmt = me.moving && me.jz <= 0 ? 1 : 0;
-  let ox = Math.sin(bob) * 5 * S * walkAmt, oy = Math.abs(Math.cos(bob)) * 4 * S * walkAmt, rot = 0, sc = 1, magOff = 0;
+  let ox = Math.sin(bob) * 5 * S * walkAmt, oy = Math.abs(Math.cos(bob)) * 4 * S * walkAmt + Math.sin(now / 650) * 1.2 * S, rot = 0, sc = 1, magOff = 0, rel = 0;
   ox -= kick * 5 * S; oy += kick * (w.kind === 'pistol' ? 14 : 10) * S; rot -= kick * 0.05;
   if (me.jz > 0) oy += 8 * S;
   if (me.crouch) oy += 6 * S;
   if (now < me.switchUntil) { const t = 1 - (me.switchUntil - now) / SWITCH_MS, e = 1 - Math.pow(1 - t, 2); oy += (1 - e) * 150 * S; rot += (1 - e) * 0.4; }
   if (me.reloadUntil > now && !w.melee) {
     const t = 1 - (me.reloadUntil - now) / w.reload, a = env(t, 0.18);
-    ox -= a * 50 * S; oy += a * 55 * S; rot -= a * 0.5;
+    ox -= a * 50 * S; oy += a * 55 * S; rot -= a * 0.5; rel = a;
     if (t > 0.3 && t < 0.7) magOff = (t - 0.3) / 0.4;
     if (t > 0.7) magOff = 0;
   }
@@ -583,34 +633,88 @@ function drawWeapon(now, S, cw, ch) {
     else { ox += (0.5 - t) * -380 * S + 90 * S; oy -= Math.sin(t * Math.PI) * 40 * S; rot += 0.7 - t * 1.9; }
   }
   const baseX = w.kind === 'pistol' ? cw / 2 + 70 * S : w.kind === 'knife' ? cw / 2 + 90 * S : cw / 2 + 60 * S;
-  const gx = baseX + ox, gy = ch - 70 * S + oy;
-  hctx.save(); hctx.translate(gx, gy); hctx.rotate(rot); hctx.scale(sc, sc);
+  const baseY = w.kind === 'pistol' ? 140 : w.kind === 'knife' ? 125 : 100;
+  const gx = baseX + ox, gy = ch - baseY * S + oy;
+  hctx.save(); hctx.translate(gx, gy); hctx.rotate(rot); hctx.scale(sc * 1.15, sc * 1.15);
+  hctx.lineJoin = 'round';
+
   if (w.kind === 'rifle') {
-    hctx.fillStyle = '#1b1c24'; hctx.fillRect(-8 * S, 18 * S, 38 * S, 60 * S);
-    hctx.fillStyle = '#2b2d3a'; hctx.fillRect(-14 * S, 0, 50 * S, 24 * S);
-    hctx.fillStyle = '#3a3d4e'; hctx.fillRect(-14 * S, 0, 50 * S, 5 * S);
-    hctx.fillStyle = '#15161d'; hctx.fillRect(-4 * S, -46 * S, 12 * S, 50 * S);
+    /* dipçik */
+    P([[-9, 30], [13, 30], [17, 96], [-13, 96]], LG(-13, 0, 17, 0, S, '#2c2e3a', '#17181f'), S, '#0d0e12');
+    P([[-7, 34], [11, 34], [13, 80], [-9, 80]], 'rgba(255,255,255,.05)', S);
+    /* sağ kol (dipçiğin üstünde, tabanca kabzasını tutar) */
+    /* gövde */
+    P([[-13, -6], [15, -6], [17, 34], [-15, 34]], LG(-15, 0, 17, 0, S, '#4a4e60', '#2d2f3c', '#1c1e27'), S, '#0d0e12');
+    P([[-13, -6], [15, -6], [14, -1], [-12, -1]], '#6a6f86', S);
+    RR(6, 6, 8, 13, 1.5, S, '#0b0c10');
+    RR(7, 20, 7, 3, 1, S, '#8a8fa6');                       /* şarjör mandalı */
+    /* arka nişangah */
+    P([[-7, 16], [9, 16], [9, 27], [-7, 27]], '#15161d', S, '#0b0c10');
+    P([[-1, 16], [3, 16], [3, 22], [-1, 22]], '#4a4e60', S);
+    /* el koruma + ray yuvaları */
+    P([[-10, -6], [12, -6], [9, -36], [-7, -36]], LG(-10, 0, 12, 0, S, '#3d4052', '#262833', '#191a22'), S, '#0d0e12');
+    for (let i = 0; i < 4; i++) RR(-6 + i * 0.3, -11 - i * 6.5, 14 - i * 0.7, 2.2, 1, S, '#0f1015');
+    /* namlu + gaz bloğu + ağız susturucu */
+    P([[-4, -36], [6, -36], [4.5, -64], [-3, -64]], LG(-4, 0, 6, 0, S, '#262833', '#101116'), S, '#0b0c10');
+    RR(-5.5, -48, 11, 6, 1.5, S, '#2e3140', '#0b0c10');
+    P([[0, -48], [3, -48], [2.6, -56], [0.4, -56]], '#c9ccd8', S);  /* arpacık */
+    RR(-5, -74, 10.5, 11, 2, S, '#0c0d11', '#050507');
+    for (let i = 0; i < 3; i++) { hctx.fillStyle = '#2a2c37'; hctx.fillRect(-4 * S, (-72 + i * 3) * S, 8.5 * S, 1 * S); }
+    /* şarjör */
     hctx.save(); hctx.translate(0, magOff * 90 * S); hctx.globalAlpha = 1 - magOff * 0.6;
-    hctx.fillStyle = '#101117'; hctx.fillRect(8 * S, 24 * S, 14 * S, 30 * S); hctx.fillStyle = '#4a4d60'; hctx.fillRect(8 * S, 24 * S, 14 * S, 4 * S);
+    P([[5, 28], [19, 28], [24, 58], [13, 62]], LG(5, 0, 24, 0, S, '#2a2c38', '#0e0f14'), S, '#050507');
+    P([[5, 28], [19, 28], [19.6, 32], [5.2, 32]], '#6a6f86', S);
+    for (let i = 0; i < 3; i++) { hctx.fillStyle = 'rgba(255,255,255,.08)'; hctx.fillRect(8 * S, (37 + i * 7) * S, 11 * S, 1.2 * S); }
     hctx.restore();
-    hctx.fillStyle = '#d8a574'; hctx.fillRect(22 * S, 30 * S, 22 * S, 40 * S);
-    if (now < flashUntil) flash(S, 2, -46);
+    /* sağ el: kabzayı tutar */
+    P([[-5, 34], [11, 34], [10, 66], [-6, 64]], '#17181f', S);
+    limb(7, 62, 46, 200, 17, 32, S, pal);
+    fist(3, 50, 23, 24, 0, -1, S);
+    /* sol el: el korumayı destekler; şarjör değişirken şarjöre iner */
+    const lx = -3 + rel * 18, ly = -20 + rel * 62 + magOff * 90;
+    limb(lx - 3, ly + 8, -100, 200, 17, 32, S, pal);
+    fist(lx, ly, 24, 20, 1.15 - rel * 0.9, 1, S);
+    if (now < flashUntil) flash(S, 0, -74);
   } else if (w.kind === 'pistol') {
-    hctx.fillStyle = '#17181f'; hctx.fillRect(-2 * S, 28 * S, 20 * S, 52 * S);
-    hctx.fillStyle = '#2e3140'; hctx.fillRect(-8 * S, -22 * S, 26 * S, 54 * S);
-    hctx.fillStyle = '#464a5e'; hctx.fillRect(-8 * S, -22 * S, 26 * S, 5 * S);
-    hctx.fillStyle = '#15161d'; hctx.fillRect(0, -30 * S, 10 * S, 10 * S);
+    /* kabza */
+    P([[-7, 38], [12, 38], [15, 92], [-10, 92]], LG(-10, 0, 15, 0, S, '#24262f', '#101116'), S, '#050507');
+    for (let i = 0; i < 6; i++) for (let j = 0; j < 3; j++) { hctx.fillStyle = 'rgba(255,255,255,.07)'; hctx.fillRect((-4 + j * 6) * S, (46 + i * 7) * S, 2 * S, 2 * S); }
+    /* şarjör tabanı */
     hctx.save(); hctx.translate(0, magOff * 90 * S); hctx.globalAlpha = 1 - magOff * 0.6;
-    hctx.fillStyle = '#101117'; hctx.fillRect(2 * S, 56 * S, 14 * S, 22 * S); hctx.restore();
-    hctx.fillStyle = '#d8a574'; hctx.fillRect(16 * S, 30 * S, 24 * S, 46 * S);
-    if (now < flashUntil) flash(S, 5, -30);
+    P([[-9, 86], [14, 86], [15, 94], [-10, 94]], '#0a0b0e', S, '#050507'); hctx.restore();
+    /* çerçeve + tetik koruması */
+    P([[-10, 26], [14, 26], [15, 42], [-11, 42]], LG(-11, 0, 15, 0, S, '#2f3240', '#171820'), S, '#050507');
+    /* sürgü */
+    P([[-9, -28], [11, -28], [14, 30], [-12, 30]], LG(-12, 0, 14, 0, S, '#5a5f76', '#3a3d4e', '#232530'), S, '#0b0c10');
+    P([[-9, -28], [11, -28], [11.6, -23], [-9.6, -23]], '#868ba4', S);
+    for (let i = 0; i < 6; i++) { hctx.fillStyle = '#12131a'; hctx.fillRect(-11 * S, (6 + i * 3.6) * S, 24 * S, 1.2 * S); }
+    RR(2, -14, 7, 10, 1.5, S, '#0b0c10');
+    /* namlu ucu + nişangahlar */
+    RR(-3, -34, 9, 8, 2, S, '#0b0c10', '#050507');
+    P([[0.5, -34], [3.5, -34], [3.5, -38], [0.5, -38]], '#f2f2f2', S);
+    RR(-10, 22, 6, 6, 1, S, '#0b0c10'); RR(7, 22, 6, 6, 1, S, '#0b0c10');
+    /* eller: sol el sağ eli sarar */
+    limb(-14, 74, -78, 200, 16, 30, S, pal);
+    const ly = 58 + rel * 12 + magOff * 90;
+    fist(-9, ly, 20, 22, 0.12, 1, S);
+    limb(7, 72, 50, 205, 17, 32, S, pal);
+    fist(4, 56, 23, 24, 0, -1, S);
+    if (now < flashUntil) flash(S, 1.5, -34);
   } else {
     hctx.rotate(-0.15);
-    hctx.fillStyle = '#5a3d2b'; hctx.fillRect(-5 * S, 32 * S, 14 * S, 56 * S);
-    hctx.fillStyle = '#8a8d9c'; hctx.fillRect(-12 * S, 26 * S, 28 * S, 7 * S);
-    hctx.fillStyle = '#c9ccd8'; hctx.beginPath(); hctx.moveTo(-5 * S, 26 * S); hctx.lineTo(9 * S, 26 * S); hctx.lineTo(8 * S, -50 * S); hctx.lineTo(-2 * S, -62 * S); hctx.closePath(); hctx.fill();
-    hctx.fillStyle = '#eef0f8'; hctx.beginPath(); hctx.moveTo(-1 * S, 26 * S); hctx.lineTo(3 * S, 26 * S); hctx.lineTo(3 * S, -54 * S); hctx.lineTo(0, -58 * S); hctx.closePath(); hctx.fill();
-    hctx.fillStyle = '#d8a574'; hctx.fillRect(10 * S, 36 * S, 24 * S, 44 * S);
+    /* sap */
+    P([[-6, 34], [10, 34], [9, 94], [-5, 94]], LG(-6, 0, 10, 0, S, '#6a4a35', '#3a271b'), S, '#1a110b');
+    for (let i = 0; i < 6; i++) { hctx.fillStyle = 'rgba(0,0,0,.35)'; hctx.fillRect(-6 * S, (40 + i * 9) * S, 16 * S, 1.5 * S); }
+    RR(-6, 90, 16, 7, 2.5, S, '#8a8d9c', '#3a3c46');          /* pomel */
+    /* kabza koruması */
+    RR(-14, 26, 32, 8, 3, S, LG(0, 26, 0, 34, S, '#b4b7c6', '#5c5f6e'), '#2b2d36');
+    /* bıçak */
+    P([[-6, 26], [10, 26], [9, -52], [-1, -66]], LG(-6, 0, 10, 0, S, '#9ea2b4', '#e6e8f2', '#b9bccb'), S, '#4a4d5c');
+    P([[-1, 26], [3, 26], [3, -56], [0, -60]], 'rgba(255,255,255,.55)', S);        /* kan oluğu */
+    P([[-6, 26], [-3.5, 26], [-3.5, -58], [-1, -66]], '#6a6d7e', S);
+    /* sağ el: sapı kavrar */
+    limb(4, 70, 44, 205, 17, 32, S, pal);
+    fist(2, 54, 23, 26, 0, -1, S);
   }
   hctx.restore();
 }
