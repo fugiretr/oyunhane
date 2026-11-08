@@ -1,3 +1,3 @@
 # oyunhane yazilikampi
 
-html5 oyunlari oynamak icinvallaha ahmet yapti guvenin
+icinde kb yada dusuk mb lik bir suru html5 oyun koycam sahibi fugire yani ahmet bilisim dersi meb engelsiz oynamak icin
