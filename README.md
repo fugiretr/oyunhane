@@ -1,3 +1,3 @@
 # oyunhane yazilikampi
 
-meb erisim engeli islemeden oyun oyna
+html5 oyunlari oynamak icinvallaha ahmet yapti guvenin
