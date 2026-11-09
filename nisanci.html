@@ -274,6 +274,20 @@ function castDist(ox, oy, dx, dy) {
 }
 function angDiff(a, b) { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; }
 
+/* Tahmini konum: son bilinen noktadan hız yönünde ileri git, ama duvara çarpınca dur.
+   Duvarların içine giren bir tahmin asla kullanılmaz. */
+const PRED = [0, 0];
+function predictPos(o, age) {
+  const vx = o.vx || 0, vy = o.vy || 0, sp = Math.hypot(vx, vy);
+  if (sp < 0.05) { PRED[0] = o.x; PRED[1] = o.y; return PRED; }
+  const wall = castDist(o.x, o.y, vx / sp, vy / sp);
+  const t = Math.min(age, Math.max(0, (wall - RADIUS - 0.08) / sp));
+  const px = o.x + vx * t, py = o.y + vy * t;
+  if (blocked(px, py)) { PRED[0] = o.x; PRED[1] = o.y; }
+  else { PRED[0] = px; PRED[1] = py; }
+  return PRED;
+}
+
 /* ================= Ses ================= */
 let ac = null, noiseBuf = null;
 function initAudio() {
@@ -635,12 +649,14 @@ function update(dt, now) {
   }
   if (now - shotsSince > 120) punch = Math.max(0, punch - dt * 0.55);
   for (const o of others.values()) {
-    /* Son paketten bu yana geçen süre kadar ileriye tahmin et, sonra yumuşakça yaklaş.
-       Böylece paketler 120 ms'de bir gelse bile hareket akıcı görünür. */
+    if (blocked(o.dx, o.dy)) { o.dx = o.x; o.dy = o.y; }
+    /* Son paketten bu yana geçen süre kadar ileriye tahmin et; tahmin duvarı geçemez. */
     const age = Math.min(0.35, Math.max(0, (now - (o.rcv || now)) / 1000));
-    const tx = o.x + (o.vx || 0) * age, ty = o.y + (o.vy || 0) * age;
+    const p = predictPos(o, age);
     const k = Math.min(1, dt * 25);
-    o.dx += (tx - o.dx) * k; o.dy += (ty - o.dy) * k;
+    const nx = o.dx + (p[0] - o.dx) * k, ny = o.dy + (p[1] - o.dy) * k;
+    if (!blocked(nx, o.dy)) o.dx = nx;
+    if (!blocked(o.dx, ny)) o.dy = ny;
   }
   if (mode === 'bots') for (const b of bots) updateBot(b, dt, now);
   kick = Math.max(0, kick - dt * 8); dmgFlash = Math.max(0, dmgFlash - dt * 2);
