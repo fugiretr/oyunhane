@@ -25,6 +25,72 @@ canvas { position:fixed; display:block; }
 #status { margin-top:10px; font-size:13px; color:#ffb86b; min-height:18px; line-height:1.4; }
 #menu .keys { margin-top:12px; font-size:12px; color:#8a8ca3; text-align:left; line-height:1.75; border-top:1px solid #2b2d44; padding-top:10px; }
 #menu .keys b { color:#c9c8e0; }
+
+/* --- Oda seçimi --- */
+#roomPick { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(8,9,16,.96); z-index:6; overflow:auto; }
+#roomPick .box { width:min(470px,92vw); background:#171827; border:1px solid #383254; border-radius:16px; padding:22px; margin:12px; }
+#roomPick h1 { margin:0 0 4px; font-size:24px; color:#8b7cff; text-align:center; }
+#roomPick p { margin:6px 0 12px; color:#aaaabd; font-size:13px; text-align:center; line-height:1.5; }
+.room { display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%; box-sizing:border-box; padding:12px 14px; margin:8px 0; background:#10111b; border:1px solid #44415f; border-radius:10px; color:#fff; font-size:15px; cursor:pointer; text-align:left; font-family:inherit; }
+.room:hover:not(:disabled) { border-color:#8b7cff; background:#171a2b; }
+.room:disabled { opacity:.45; cursor:not-allowed; }
+.room b { font-size:15px; }
+.room span { color:#aaaabd; font-size:12px; }
+.pill { display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:bold; }
+.pill.lobby { background:#4a3b12; color:#ffcf5c; }
+.pill.play { background:#123a22; color:#5ce08a; }
+.pill.empty { background:#20222f; color:#8a8ca3; }
+.pill.full { background:#3a1215; color:#ff8a8a; }
+#roomsBack, #roomsRefresh { margin-top:12px; padding:10px 14px; border:0; border-radius:9px; background:#2b2d44; color:#fff; cursor:pointer; font-weight:bold; font-family:inherit; }
+#roomsRefresh { background:#7967f5; float:right; }
+#roomsBack:hover { background:#3a3d5c; }
+#roomsRefresh:hover { background:#9385ff; }
+
+/* --- Lobi --- */
+#lobby { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(8,9,16,.94); z-index:6; overflow:auto; }
+#lobby .box { width:min(660px,94vw); background:#171827; border:1px solid #383254; border-radius:16px; padding:22px; margin:12px; }
+#lobby h1 { margin:0; font-size:24px; color:#8b7cff; text-align:center; }
+#lobbyInfo { text-align:center; margin:6px 0 14px; color:#ffcf5c; font-weight:bold; font-size:16px; min-height:20px; }
+#lobbyInfo.play { color:#5ce08a; }
+.teams { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media (max-width:520px) { .teams { grid-template-columns:1fr; } }
+.team { background:#10111b; border:1px solid #2b2d44; border-radius:10px; padding:10px 12px; min-height:168px; }
+.team h3 { margin:0 0 8px; font-size:15px; display:flex; justify-content:space-between; }
+.team.blue h3 { color:#4aa3ff; }
+.team.red h3 { color:#ff5b5b; }
+.team ul { list-style:none; margin:0; padding:0; }
+.team li { padding:5px 0; font-size:14px; color:#d8d8e8; border-bottom:1px solid #1d1f30; }
+.team li.me { color:#fff; font-weight:bold; }
+.team li.empty { color:#5a5c72; border:0; font-style:italic; }
+#teamBtns { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; justify-content:center; }
+#teamBtns button { padding:10px 16px; border:0; border-radius:9px; color:#fff; font-weight:bold; cursor:pointer; font-size:13px; background:#2b2d44; font-family:inherit; }
+#teamBtns button.blue { background:#2f6fb5; }
+#teamBtns button.blue:hover { background:#3a83d1; }
+#teamBtns button.red { background:#b23c3c; }
+#teamBtns button.red:hover { background:#cc4a4a; }
+#teamBtns button:disabled { opacity:.4; cursor:not-allowed; }
+#teamBtns button.leave { background:#3a1215; margin-left:auto; }
+#teamBtns button.leave:hover { background:#552025; }
+#lobbyMsg { margin-top:10px; min-height:18px; text-align:center; color:#ff8a8a; font-size:13px; line-height:1.4; }
+#lobby .keys { margin-top:12px; font-size:12px; color:#8a8ca3; text-align:center; border-top:1px solid #2b2d44; padding-top:10px; line-height:1.7; }
+#lobby .keys b { color:#c9c8e0; }
+
+/* --- Sohbet --- */
+#chat { position:fixed; left:14px; bottom:78px; width:min(430px,72vw); z-index:7; display:none; pointer-events:none; }
+#chat.open, #chat.peek { display:block; }
+#chatLog { max-height:190px; overflow:auto; background:rgba(8,9,16,.82); border-radius:9px; padding:8px 10px; font-size:13px; line-height:1.5; border:1px solid rgba(80,80,120,.4); pointer-events:auto; }
+#chat.open #chatLog { border-color:#7967f5; }
+#chatLog .msg { margin:2px 0; word-wrap:break-word; color:#e8e8f4; }
+#chatLog .msg.all b { color:#ffd166; }
+#chatLog .msg.team b { color:#7fb8ff; }
+#chatLog .msg .tag { font-size:10px; opacity:.75; margin-right:4px; }
+#chatLog .msg.empty { color:#7a7c92; font-style:italic; }
+#chatMsg { display:none; margin-top:6px; }
+#chat.open #chatMsg { display:block; }
+#chatMsg input { width:100%; box-sizing:border-box; padding:9px 11px; background:#10111b; color:#fff; border:1px solid #44415f; border-radius:8px; font-size:14px; outline:none; pointer-events:auto; font-family:inherit; }
+#chatMsg input:focus { border-color:#8b7cff; }
+#leaveBtn { position:fixed; top:10px; right:10px; z-index:6; display:none; padding:7px 12px; background:rgba(180,50,60,.85); color:#fff; border:0; border-radius:8px; font-size:12px; font-weight:bold; cursor:pointer; font-family:inherit; }
+#leaveBtn:hover { background:rgba(210,60,70,.95); }
 </style>
 </head>
 <body>
@@ -49,10 +115,46 @@ canvas { position:fixed; display:block; }
       <b>W A S D</b> hareket &nbsp; <b>Fare</b> bakış (yukarı/aşağı dahil) &nbsp; <b>Sol tık</b> ateş<br>
       <b>1</b> tüfek &nbsp; <b>2</b> tabanca &nbsp; <b>3</b> bıçak &nbsp; <b>Fare tekerleği</b> silah değiştir<br>
       <b>R</b> şarjör &nbsp; <b>F</b> silahı incele &nbsp; <b>Boşluk</b> zıpla &nbsp; <b>C</b> çömel &nbsp; <b>Shift</b> yavaş yürü<br>
-      <b>Bıçak:</b> sol tık = savurma, sağ tık = saplama (arkadan vurunca ölümcül) &nbsp; <b>Tab</b> skor tablosu
+      <b>Bıçak:</b> sol tık = savurma, sağ tık = saplama (arkadan vurunca ölümcül) &nbsp; <b>Tab</b> skor tablosu<br>
+      <b>T</b> herkesle sohbet &nbsp; <b>Y</b> takım sohbeti &nbsp; (Enter gönder, Esc kapat)
     </div>
   </div>
 </div>
+
+<div id="roomPick">
+  <div class="box">
+    <h1>ODA SEÇ</h1>
+    <p id="roomsInfo">Odalar yükleniyor...</p>
+    <div id="roomList"></div>
+    <button id="roomsBack">← GERİ</button>
+    <button id="roomsRefresh">YENİLE</button>
+  </div>
+</div>
+
+<div id="lobby">
+  <div class="box">
+    <h1 id="lobbyTitle">ODA</h1>
+    <div id="lobbyInfo">Bekleniyor...</div>
+    <div class="teams">
+      <div class="team blue"><h3><span>MAVİ</span><span id="cnt0">0/4</span></h3><ul id="list0"></ul></div>
+      <div class="team red"><h3><span>KIRMIZI</span><span id="cnt1">0/4</span></h3><ul id="list1"></ul></div>
+    </div>
+    <div id="teamBtns">
+      <button id="joinBlue" class="blue">MAVİ TAKIMA GEÇ</button>
+      <button id="joinRed" class="red">KIRMIZI TAKIMA GEÇ</button>
+      <button id="leaveRoom" class="leave">ODADAN AYRIL</button>
+    </div>
+    <div id="lobbyMsg"></div>
+    <div class="keys"><b>Y</b> takım sohbeti &nbsp; • &nbsp; <b>T</b> herkesle sohbet &nbsp; • &nbsp; Maç 15 saniye sonra başlar, takımını bu sürede seçebilirsin.</div>
+  </div>
+</div>
+
+<div id="chat">
+  <div id="chatLog"></div>
+  <div id="chatMsg"><input id="chatInput" maxlength="120" placeholder="Mesaj yaz..." autocomplete="off"></div>
+</div>
+
+<button id="leaveBtn">ODADAN AYRIL</button>
 
 <script>
 (() => {
@@ -65,6 +167,7 @@ const FOV_PLANE = Math.tan(Math.PI / 6);
 const RADIUS = 0.2, STAND_Z = 0.8, CROUCH_Z = 0.55;
 const RESPAWN_MS = 3000, SWITCH_MS = 420, INSPECT_MS = 2400;
 const SEND_MS = 120, POLL_MS = 250, STALE_MS = 5000;
+const ROOMS = ['room1', 'room2', 'room3', 'room4'], ROOM_MAX = 8, LOBBY_MS = 15000, CHAT_KEEP = 12;
 const TEAM_NAMES = ["MAVİ", "KIRMIZI"];
 const TEAM_COLORS = ["#4aa3ff", "#ff5b5b"];
 
@@ -245,17 +348,19 @@ const buf = new Uint32Array(img.data.buffer);
 const zbuf = new Float32Array(W);
 
 function rid() { return Math.random().toString(36).slice(2, 8); }
-const me = { id: rid(), name: 'Oyuncu', team: 0, x: 2, y: 2, a: 0, pitch: 0, hp: 100, k: 0, d: 0, by: '', h: {},
+const me = { id: rid(), name: 'Oyuncu', room: '', team: 0, x: 2, y: 2, a: 0, pitch: 0, hp: 100, k: 0, d: 0, by: '', h: {},
   dead: false, respawnAt: 0, protectUntil: 0, wi: 0, ammo: [30, 12, 0], reloadUntil: 0, switchUntil: 0, inspectUntil: 0,
   slashUntil: 0, slashKind: 0, nextFire: 0, moving: false, crouch: false, walk: false, z: STAND_Z, jz: 0, vz: 0 };
 const others = new Map();
 const bots = [];
 const feed = [];
 let mode = '', started = false, online = false, netFail = 0, seq = 0, dirty = true, metaDirty = true, netDirty = false, lastSend = 0, diff = 1, sending = false, wasMv = false;
+let inLobby = false, lobbyStartAt = 0, lobbyTickAt = 0, lastLobbySend = 0, chatOpen = false, chatCh = 'all', chatPeekUntil = 0;
 let hitMarker = 0, hitHead = false, dmgFlash = 0, kick = 0, bob = 0, flashUntil = 0, lastDamager = '', punch = 0, shotsSince = 0;
 const keys = {};
 let firing = false, clickPending = false;
 const labels = [];
+const chatMsgs = [];
 
 function isWall(x, y) { const mx = Math.floor(x), my = Math.floor(y); return mx < 0 || my < 0 || mx >= N || my >= N || MAP[my][mx] > 0; }
 function blocked(x, y) { return isWall(x - RADIUS, y - RADIUS) || isWall(x + RADIUS, y - RADIUS) || isWall(x - RADIUS, y + RADIUS) || isWall(x + RADIUS, y + RADIUS); }
@@ -348,6 +453,9 @@ function applyDamage(amount, byId) {
 
 /* ================= Ağ (online mod) ================= */
 const r2 = v => Math.round(v * 100) / 100;
+const playerUrl = () => DB_URL + '/players/' + me.room + '/players/' + me.id + '.json';
+const playerUrlFor = id => DB_URL + '/players/' + me.room + '/players/' + id + '.json';
+const roomUrl = () => DB_URL + '/players/' + me.room + '.json';
 /* Tam durum: isim, takım, can, skor, hasar tablosu. Sadece değiştiğinde gönderilir. */
 function fullState() {
   return { n: me.name, c: me.team, x: r2(me.x), y: r2(me.y), a: r2(me.a), p: Math.max(0, me.hp), k: me.k, d: me.d, b: me.by, w: me.wi, h: me.h, s: ++seq, t: Date.now() };
@@ -363,7 +471,7 @@ async function send(now) {
   const body = JSON.stringify(full ? fullState() : tickState());
   let ok = false;
   try {
-    const res = await fetch(DB_URL + '/players/' + me.id + '.json', { method: full ? 'PUT' : 'PATCH', body });
+    const res = await fetch(playerUrl(), { method: full ? 'PUT' : 'PATCH', body });
     ok = res.ok;
   } catch (e) {}
   if (full && !ok) metaDirty = true;
@@ -407,7 +515,7 @@ function handleData(data, now) {
   }
   for (const [id, o] of others) {
     if (!seen.has(id)) { others.delete(id); continue; }
-    if (now - o.seenAt > 60000) { fetch(DB_URL + '/players/' + id + '.json', { method: 'DELETE' }).catch(() => {}); others.delete(id); }
+    if (now - o.seenAt > 60000) { fetch(playerUrlFor(id), { method: 'DELETE' }).catch(() => {}); others.delete(id); }
   }
 }
 function fresh(o, now) { return now - o.seenAt < STALE_MS; }
@@ -425,7 +533,7 @@ function applyPath(path, val, merge) {
 /* Firebase canlı akış: veri değişince sunucu hemen gönderir, sorgulama beklemek yok */
 function startStream() {
   if (typeof EventSource === 'undefined') { poll(); return; }
-  es = new EventSource(DB_URL + '/players.json');
+  es = new EventSource(roomUrl());
   const onMsg = merge => ev => {
     try { const m = JSON.parse(ev.data); applyPath(m.path, m.data, merge); netDirty = true; netFail = 0; online = true; sseOk = true; } catch (e) {}
   };
@@ -436,20 +544,28 @@ async function poll() {
   if (mode !== 'online') return;
   const t0 = performance.now();
   try {
-    const r = await fetch(DB_URL + '/players.json', { cache: 'no-store' });
+    const r = await fetch(roomUrl(), { cache: 'no-store' });
     if (!r.ok) throw new Error('http ' + r.status);
-    handleData((await r.json()) || {}, performance.now());
+    applyPath('', (await r.json()) || {}, false);
+    handleNet(performance.now());
     netFail = 0; online = true;
   } catch (e) { netFail++; if (netFail >= 4) online = false; }
   setTimeout(poll, Math.min(1500, Math.max(POLL_MS, (performance.now() - t0) * 1.2)));
 }
-async function pickTeam() {
-  const r = await fetch(DB_URL + '/players.json', { cache: 'no-store' });
-  if (!r.ok) throw new Error('http ' + r.status);
-  const data = (await r.json()) || {};
-  const now = Date.now(), c = [0, 0];
-  for (const id in data) { const p = data[id]; if (p && typeof p.t === 'number' && Math.abs(now - p.t) < 10000) c[p.c === 1 ? 1 : 0]++; }
-  return c[0] <= c[1] ? 0 : 1;
+/* Odadaki tüm veriyi işle: oyuncular + oda bilgisi (geri sayım) + sohbet. */
+function handleNet(now) {
+  if (mode !== 'online') return;
+  handleData(netCache.players || {}, now);
+  const meta = netCache.meta;
+  if (meta && typeof meta.startAt === 'number') lobbyStartAt = meta.startAt;
+  buildChat();
+}
+/* Odadaki takım mevcutları (ben dahil). */
+function teamCounts() {
+  const now = performance.now(), c = [0, 0];
+  for (const o of others.values()) if (fresh(o, now)) c[o.team]++;
+  c[me.team]++;
+  return c;
 }
 
 /* ================= Botlar ================= */
@@ -612,7 +728,6 @@ function inspect(now) {
 }
 
 function update(dt, now) {
-  if (mode === 'online' && netDirty) { netDirty = false; handleData(netCache, now); }
   if (me.dead) { if (now >= me.respawnAt) respawn(); }
   else {
     let fx = 0, fy = 0;
@@ -942,8 +1057,9 @@ function drawHud(now) {
   hctx.fillStyle = '#fff'; hctx.fillText(':', cw / 2, 24 * S);
   hctx.fillStyle = TEAM_COLORS[1]; hctx.fillText(sc[1] + ' KIRMIZI', cw / 2 + 52 * S, 24 * S);
   hctx.font = (11 * S | 0) + 'px Arial'; hctx.fillStyle = TEAM_COLORS[me.team]; hctx.textAlign = 'left';
-  hctx.fillText('Takımın: ' + TEAM_NAMES[me.team] + (mode === 'bots' ? '  •  botlarla' : '  •  online'), 12 * S, 20 * S);
-  if (mode === 'online' && !online) { hctx.fillStyle = '#ffb86b'; hctx.fillText('Bağlantı koptu, yeniden deneniyor...', 12 * S, 34 * S); }
+  hctx.fillText('Takımın: ' + TEAM_NAMES[me.team] + (mode === 'bots' ? '  •  botlarla' : '  •  ' + roomLabel(me.room)), 12 * S, 20 * S);
+  if (mode === 'online') { hctx.fillStyle = 'rgba(200,200,230,.75)'; hctx.fillText('T sohbet • Y takım', 12 * S, 34 * S); }
+  if (mode === 'online' && !online) { hctx.fillStyle = '#ffb86b'; hctx.fillText('Bağlantı koptu, yeniden deneniyor...', 12 * S, 48 * S); }
 
   hctx.textAlign = 'right'; hctx.font = 'bold ' + (12 * S | 0) + 'px Arial';
   let fy = 54 * S;
@@ -1004,6 +1120,14 @@ function mouseLocked() { return document.pointerLockElement === hud; }
 let last = performance.now();
 function frame() {
   const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (mode === 'online' && netDirty) { netDirty = false; handleNet(now); }
+  if (mode === 'online' && inLobby) {
+    refreshLobby(false);
+    /* Lobide hareketsizken de görünür kal: 1,2 sn'de bir küçük varlık paketi. */
+    if (now - lastLobbySend > 1200) { lastLobbySend = now; send(now); }
+    if (Date.now() >= lobbyStartAt) beginOnlineMatch();
+  }
+  if (chatPeekUntil && now > chatPeekUntil) { chatPeekUntil = 0; renderChat(); }
   if (started) update(dt, now);
   render(now);
   if (started) drawHud(now); else hctx.clearRect(0, 0, hud.width, hud.height);
@@ -1011,6 +1135,11 @@ function frame() {
 }
 
 document.addEventListener('keydown', e => {
+  if (chatOpen || e.target === chatInput) return;
+  if (mode === 'online' && (started || inLobby) && !e.repeat) {
+    if (e.code === 'KeyT') { e.preventDefault(); openChat('all'); return; }
+    if (e.code === 'KeyY') { e.preventDefault(); openChat('team'); return; }
+  }
   if (!started) return;
   if (['Tab', 'Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault();
   if (e.repeat) return;
@@ -1032,6 +1161,7 @@ document.addEventListener('mousemove', e => {
 });
 hud.addEventListener('mousedown', e => {
   if (!started) return;
+  if (chatOpen) { closeChat(); return; }
   initAudio();
   if (!mouseLocked()) { try { hud.requestPointerLock(); } catch (er) {} return; }
   if (e.button === 0) { firing = true; clickPending = true; }
@@ -1043,39 +1173,317 @@ hud.addEventListener('wheel', e => {
   if (!started) return; e.preventDefault();
   selectWeapon((me.wi + (e.deltaY > 0 ? 1 : 2)) % 3, performance.now());
 }, { passive: false });
-window.addEventListener('pagehide', () => { if (mode === 'online') { try { fetch(DB_URL + '/players/' + me.id + '.json', { method: 'DELETE', keepalive: true }); } catch (e) {} } });
+window.addEventListener('pagehide', () => { if (mode === 'online' && me.room) { try { fetch(playerUrl(), { method: 'DELETE', keepalive: true }); } catch (e) {} } });
 
 const menu = document.getElementById('menu'), nameInput = document.getElementById('nameInput');
 const botBtn = document.getElementById('botBtn'), onlineBtn = document.getElementById('onlineBtn'), statusEl = document.getElementById('status'), diffSel = document.getElementById('diffSel');
+const roomPick = document.getElementById('roomPick'), roomListEl = document.getElementById('roomList');
+const roomsInfo = document.getElementById('roomsInfo'), roomsBack = document.getElementById('roomsBack'), roomsRefresh = document.getElementById('roomsRefresh');
+const lobbyEl = document.getElementById('lobby'), lobbyTitle = document.getElementById('lobbyTitle'), lobbyInfoEl = document.getElementById('lobbyInfo');
+const cnt0 = document.getElementById('cnt0'), cnt1 = document.getElementById('cnt1'), list0 = document.getElementById('list0'), list1 = document.getElementById('list1');
+const lobbyMsgEl = document.getElementById('lobbyMsg'), joinBlue = document.getElementById('joinBlue'), joinRed = document.getElementById('joinRed'), leaveRoomBtn = document.getElementById('leaveRoom');
+const chatEl = document.getElementById('chat'), chatLog = document.getElementById('chatLog'), chatInput = document.getElementById('chatInput'), leaveBtn = document.getElementById('leaveBtn');
+
 try { nameInput.value = localStorage.getItem('nisanci_name') || ''; } catch (e) {}
 function readName() {
   me.name = (nameInput.value.trim() || 'Oyuncu' + Math.floor(Math.random() * 900 + 100)).slice(0, 14);
   try { localStorage.setItem('nisanci_name', me.name); } catch (e) {}
 }
+function enableControls(on) { botBtn.disabled = onlineBtn.disabled = !on; }
 function begin() {
-  initAudio(); respawn(); me.protectUntil = 0; started = true; menu.style.display = 'none';
+  initAudio(); respawn(); me.protectUntil = 0; started = true;
+  menu.style.display = 'none'; roomPick.style.display = 'none'; lobbyEl.style.display = 'none';
   try { hud.requestPointerLock(); } catch (e) {}
 }
 function startBots() {
   readName(); mode = 'bots'; diff = +diffSel.value; me.team = 0; makeBots(); begin();
 }
-async function startOnline() {
-  botBtn.disabled = onlineBtn.disabled = true; statusEl.textContent = 'Bağlanılıyor...';
+
+/* ================= Odalar ================= */
+function roomLabel(id) { return 'ODA ' + (ROOMS.indexOf(id) + 1); }
+async function openRooms() {
   readName();
+  onlineBtn.disabled = true;
+  statusEl.textContent = '';
+  menu.style.display = 'none';
+  roomPick.style.display = 'flex';
+  roomsInfo.textContent = 'Odalar yükleniyor...';
+  roomListEl.innerHTML = '';
   try {
-    me.team = await pickTeam();
-    /* Kurallar yazmaya izin veriyor mu? İlk kayıtla hemen doğrula. */
-    const w = await fetch(DB_URL + '/players/' + me.id + '.json', { method: 'PUT', body: JSON.stringify(fullState()) });
-    if (!w.ok) throw new Error('write ' + w.status);
+    const r = await fetch(DB_URL + '/players.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error('http ' + r.status);
+    renderRooms((await r.json()) || {});
+  } catch (e) {
+    roomsInfo.textContent = 'Odalar yüklenemedi. İnternet/okul engeli olabilir; botlarla oynayabilirsin.';
   }
-  catch (e) {
-    statusEl.textContent = 'Online sunucuya yazılamadı (internet/okul engeli ya da veritabanı izni olabilir). İstersen botlarla oynayabilirsin.';
-    botBtn.disabled = onlineBtn.disabled = false; return;
-  }
-  mode = 'online'; online = true; begin(); send(performance.now()); startStream();
+  onlineBtn.disabled = false;
 }
+function renderRooms(data) {
+  const now = Date.now();
+  roomListEl.innerHTML = '';
+  let empty = 0;
+  for (let i = 0; i < ROOMS.length; i++) {
+    const id = ROOMS[i], room = data[id] || {}, players = room.players || {};
+    let total = 0; const c = [0, 0];
+    for (const pid in players) {
+      const p = players[pid];
+      if (!p || typeof p.t !== 'number' || Math.abs(now - p.t) > 10000) continue;
+      total++; c[p.c === 1 ? 1 : 0]++;
+    }
+    const meta = room.meta || {};
+    const playing = typeof meta.startAt === 'number' && meta.startAt <= now;
+    const full = total >= ROOM_MAX;
+    const label = full ? 'DOLU' : playing ? 'MAÇTA' : total ? 'LOBİ' : 'BOŞ';
+    const cls = full ? 'full' : playing ? 'play' : total ? 'lobby' : 'empty';
+    if (!total) empty++;
+    const b = document.createElement('button');
+    b.className = 'room';
+    b.disabled = full;
+    b.innerHTML = '<span><b>' + roomLabel(id) + '</b><br><span>' + total + '/' + ROOM_MAX + ' oyuncu • ' + c[0] + ' MAVİ / ' + c[1] + ' KIRMIZI</span></span>' +
+      '<span class="pill ' + cls + '">' + label + '</span>';
+    b.addEventListener('click', () => { roomPick.style.display = 'none'; joinRoom(id); });
+    roomListEl.appendChild(b);
+  }
+  roomsInfo.textContent = empty === ROOMS.length
+    ? 'Şu an boş. Bir odaya gir; arkadaşların da aynı odaya gelsin.'
+    : 'Bir oda seç. Aynı odadakiler birbiriyle oynar (oda başına en fazla ' + ROOM_MAX + ' kişi).';
+}
+async function joinRoom(room) {
+  readName();
+  me.room = room;
+  try {
+    const r = await fetch(DB_URL + '/players/' + room + '.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error('read ' + r.status);
+    const data = (await r.json()) || {};
+    /* Mevcut kurallar oda kökünde bir oyuncu kaydı şekli bekliyor. İlk girişte
+       odanın köküne küçük bir "tohum" yazılır; altına players/meta/chat eklenir.
+       Böylece Firebase kurallarını değiştirmeye gerek kalmaz. */
+    if (typeof data.n !== 'string') {
+      const seed = { n: roomLabel(room), c: 0, x: 1, y: 1, a: 0, p: 100, k: 0, d: 0, b: '', w: 0, h: {}, s: 1, t: 1 };
+      const sp = await fetch(DB_URL + '/players/' + room + '.json', { method: 'PATCH', body: JSON.stringify(seed) });
+      if (!sp.ok) throw new Error('oda ' + sp.status);
+    }
+    const players = data.players || {};
+    const now = Date.now();
+    let total = 0; const c = [0, 0], stale = [];
+    for (const pid in players) {
+      const p = players[pid];
+      if (!p || pid === me.id) continue;
+      if (typeof p.t !== 'number' || Math.abs(now - p.t) > 10000) { stale.push(pid); continue; }
+      total++; c[p.c === 1 ? 1 : 0]++;
+    }
+    /* Kopmuş/çökmüş oyunculardan kalan kayıtları temizle; lobide hayalet olarak görünmesinler. */
+    if (stale.length) {
+      await Promise.all(stale.slice(0, 20).map(pid =>
+        fetch(DB_URL + '/players/' + room + '/players/' + pid + '.json', { method: 'DELETE' }).catch(() => {})
+      ));
+    }
+    if (total >= ROOM_MAX) { backToMenu('Bu oda dolu. Başka bir oda seç.'); return; }
+    /* Denge: az olan takıma gir. İlk kişi MAVİ, ikinci KIRMIZI olur. */
+    me.team = c[0] <= c[1] ? 0 : 1;
+    const meta = data.meta || {};
+    let startAt = typeof meta.startAt === 'number' ? meta.startAt : 0;
+    if (total === 0 || !startAt) {
+      startAt = now + LOBBY_MS;
+      fetch(DB_URL + '/players/' + room + '/meta.json', { method: 'PUT', body: JSON.stringify({ startAt, since: now }) }).catch(() => {});
+    }
+    me.k = 0; me.d = 0; me.by = ''; me.h = {}; me.hp = 100; me.dead = false;
+    others.clear(); netCache = Object.create(null); seq = 0;
+    metaDirty = true; dirty = true; netDirty = false; sseOk = false; netFail = 0;
+    respawn();
+    const w = await fetch(playerUrl(), { method: 'PUT', body: JSON.stringify(fullState()) });
+    if (!w.ok) throw new Error('write ' + w.status);
+    metaDirty = false; dirty = false; lastLobbySend = performance.now();
+    mode = 'online'; online = true; started = false; inLobby = true;
+    statusEl.textContent = '';
+    lobbyStartAt = startAt; lobbyTickAt = 0;
+    lobbyTitle.textContent = roomLabel(room);
+    lobbyMsgEl.textContent = ''; lobbyInfoEl.textContent = 'Bekleniyor...';
+    lobbyEl.style.display = 'flex'; leaveBtn.style.display = 'block';
+    chatMsgs.length = 0; chatPeekUntil = 0; renderChat();
+    enableControls(false);
+    startStream();
+    refreshLobby(true);
+  } catch (e) {
+    backToMenu('Odaya girilemedi (' + ((e && e.message) || e) + '). Tekrar dene.');
+  }
+}
+function backToMenu(msg) {
+  if (mode === 'online' && me.room) {
+    try { fetch(playerUrl(), { method: 'DELETE', keepalive: true }); } catch (e) {}
+  }
+  if (es) { es.close(); es = null; }
+  mode = ''; online = false; started = false; inLobby = false; me.room = '';
+  others.clear(); netCache = Object.create(null); seq = 0; netDirty = false; sending = false;
+  chatMsgs.length = 0; chatPeekUntil = 0; closeChat();
+  lobbyEl.style.display = 'none'; roomPick.style.display = 'none'; leaveBtn.style.display = 'none';
+  menu.style.display = 'flex';
+  enableControls(true);
+  statusEl.textContent = msg || '';
+  if (document.pointerLockElement) { try { document.exitPointerLock(); } catch (e) {} }
+}
+function leaveRoom() { backToMenu('Odadan ayrıldın.'); }
+
+/* ================= Lobi ================= */
+function refreshLobby(force) {
+  if (!inLobby) return;
+  const now = performance.now();
+  if (!force && now - lobbyTickAt < 250) return;
+  lobbyTickAt = now;
+  const c = teamCounts();
+  cnt0.textContent = c[0] + '/4'; cnt1.textContent = c[1] + '/4';
+  joinBlue.disabled = me.team === 0;
+  joinRed.disabled = me.team === 1;
+  const rows = [[], []];
+  rows[me.team].push({ name: me.name + ' (sen)', mine: true });
+  for (const o of others.values()) {
+    if (!fresh(o, now)) continue;
+    rows[o.team === 1 ? 1 : 0].push({ name: o.name, mine: false });
+  }
+  for (let t = 0; t < 2; t++) {
+    const ul = t ? list1 : list0;
+    ul.innerHTML = '';
+    rows[t].sort((a, b) => (b.mine ? 1 : 0) - (a.mine ? 1 : 0) || a.name.localeCompare(b.name));
+    for (const r of rows[t]) {
+      const li = document.createElement('li');
+      li.textContent = r.name;
+      if (r.mine) li.className = 'me';
+      ul.appendChild(li);
+    }
+    for (let i = rows[t].length; i < 4; i++) {
+      const li = document.createElement('li');
+      li.className = 'empty'; li.textContent = 'boş';
+      ul.appendChild(li);
+    }
+  }
+  lobbyStatus();
+}
+function lobbyStatus() {
+  const left = Math.max(0, lobbyStartAt - Date.now());
+  if (left > 0) {
+    lobbyInfoEl.textContent = 'MAÇ BAŞLIYOR • ' + Math.ceil(left / 1000) + ' sn';
+    lobbyInfoEl.classList.remove('play');
+  } else {
+    lobbyInfoEl.textContent = 'MAÇ BAŞLADI';
+    lobbyInfoEl.classList.add('play');
+  }
+}
+/* Takım değiştirme: takımlar arasındaki fark 1'den fazla olacaksa engellenir.
+   Böylece herkes aynı takıma yığılamaz. */
+function joinTeam(t) {
+  if (!inLobby || t === me.team) return;
+  const c = teamCounts();
+  c[me.team]--; c[t]++;
+  if (Math.abs(c[0] - c[1]) > 1) {
+    lobbyMsgEl.textContent = 'Denge için geçemezsin: ' + c[0] + ' MAVİ / ' + c[1] + ' KIRMIZI olurdu. Diğer takımı seç.';
+    return;
+  }
+  lobbyMsgEl.textContent = '';
+  me.team = t; metaDirty = true; dirty = true;
+  send(performance.now());
+  refreshLobby(true);
+}
+function beginOnlineMatch() {
+  if (!inLobby) return;
+  inLobby = false;
+  lobbyEl.style.display = 'none';
+  lobbyMsgEl.textContent = '';
+  begin();
+  send(performance.now());
+}
+
+/* ================= Sohbet ================= */
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+function buildChat() {
+  const c = netCache.chat || {}, out = [];
+  for (const ch of ['a', 't0', 't1']) {
+    const node = c[ch];
+    if (!node || typeof node !== 'object') continue;
+    for (const k in node) {
+      const m = node[k];
+      if (!m || typeof m.m !== 'string') continue;
+      out.push({ ch, n: String(m.n || '?').slice(0, 14), t: m.t === 1 ? 1 : 0, m: String(m.m).slice(0, 120), s: typeof m.s === 'number' ? m.s : 0 });
+    }
+  }
+  out.sort((a, b) => a.s - b.s);
+  const show = out.filter(m => m.ch === 'a' || m.ch === 't' + me.team);
+  if (show.length) chatPeekUntil = performance.now() + 8000;
+  chatMsgs.length = 0;
+  for (let i = Math.max(0, show.length - 40); i < show.length; i++) chatMsgs.push(show[i]);
+  renderChat();
+}
+function renderChat() {
+  if (!chatLog) return;
+  const now = performance.now(), open = chatOpen, peek = now < chatPeekUntil;
+  chatEl.classList.toggle('open', open);
+  chatEl.classList.toggle('peek', !open && peek);
+  if (!open && !peek) return;
+  if (!chatOpen) chatEl.classList.remove('open');
+  const items = open ? chatMsgs : chatMsgs.slice(-6);
+  chatLog.innerHTML = items.length
+    ? items.map(m => {
+        const all = m.ch === 'a';
+        return '<div class="msg ' + (all ? 'all' : 'team') + '"><span class="tag">' + (all ? 'HERKES' : 'TAKIM') +
+          ' • ' + (m.t === 1 ? 'KIRMIZI' : 'MAVİ') + '</span><b>' + escapeHtml(m.n) + ':</b> ' + escapeHtml(m.m) + '</div>';
+      }).join('')
+    : '<div class="msg empty">Henüz mesaj yok. T = herkes, Y = takım.</div>';
+  if (open) chatLog.scrollTop = chatLog.scrollHeight;
+}
+function openChat(kind) {
+  if (mode !== 'online') return;
+  chatCh = kind;
+  chatOpen = true;
+  chatInput.placeholder = kind === 'team' ? 'Takımına yaz... (Enter gönder, Esc kapat)' : 'Herkese yaz... (Enter gönder, Esc kapat)';
+  chatInput.value = '';
+  for (const k in keys) keys[k] = false;
+  firing = false;
+  if (document.pointerLockElement) { try { document.exitPointerLock(); } catch (e) {} }
+  chatPeekUntil = performance.now() + 8000;
+  renderChat();
+  setTimeout(() => { try { chatInput.focus(); } catch (e) {} }, 0);
+}
+function closeChat() {
+  if (!chatOpen) { renderChat(); return; }
+  chatOpen = false;
+  try { chatInput.blur(); } catch (e) {}
+  renderChat();
+}
+function pruneChat(ch) {
+  const node = (netCache.chat || {})[ch];
+  if (!node) return;
+  const keys2 = Object.keys(node).sort();
+  const extra = Math.min(5, keys2.length - CHAT_KEEP);
+  for (let i = 0; i < extra; i++) fetch(DB_URL + '/players/' + me.room + '/chat/' + ch + '/' + keys2[i] + '.json', { method: 'DELETE' }).catch(() => {});
+}
+function sendChat() {
+  const text = chatInput.value.trim().slice(0, 120);
+  chatInput.value = '';
+  if (!text || mode !== 'online' || !me.room) { closeChat(); return; }
+  const ch = chatCh === 'team' ? 't' + me.team : 'a';
+  const key = Date.now().toString(36) + me.id.slice(0, 4);
+  const body = JSON.stringify({ n: me.name, t: me.team, m: text, s: Date.now() });
+  fetch(DB_URL + '/players/' + me.room + '/chat/' + ch + '/' + key + '.json', { method: 'PUT', body })
+    .then(() => pruneChat(ch)).catch(() => {});
+  chatPeekUntil = performance.now() + 8000;
+}
+chatInput.addEventListener('keydown', e => {
+  e.stopPropagation();
+  if (e.key === 'Enter') { e.preventDefault(); sendChat(); }
+  else if (e.key === 'Escape') { e.preventDefault(); closeChat(); }
+});
+chatInput.addEventListener('keyup', e => e.stopPropagation());
+
+joinBlue.addEventListener('click', () => joinTeam(0));
+joinRed.addEventListener('click', () => joinTeam(1));
+leaveRoomBtn.addEventListener('click', leaveRoom);
+leaveBtn.addEventListener('click', leaveRoom);
+roomsBack.addEventListener('click', () => { roomPick.style.display = 'none'; menu.style.display = 'flex'; onlineBtn.disabled = false; });
+roomsRefresh.addEventListener('click', openRooms);
+
 botBtn.addEventListener('click', startBots);
-onlineBtn.addEventListener('click', startOnline);
+onlineBtn.addEventListener('click', openRooms);
 nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') startBots(); });
 
 /* Geliştirici/test API'si: sadece yerelde açık. Yayında (github.io, netlify vb.) __g hiç oluşmaz. */
@@ -1083,6 +1491,11 @@ const DEBUG = location.hostname === 'localhost' || location.hostname === '127.0.
 if (DEBUG) {
   window.__g = { me, others, bots, MAP, WEAPONS,
     get online() { return online; }, get started() { return started; }, get mode() { return mode; },
+    get room() { return me.room; }, get inLobby() { return inLobby; }, get lobbyStartAt() { return lobbyStartAt; },
+    get chat() { return chatMsgs.slice(); },
+    joinRoom: id => joinRoom(id), switchTeam: t => joinTeam(t), sendChat: t => { chatInput.value = t; chatCh = chatCh || 'all'; sendChat(); },
+    openChat: k => openChat(k), closeChat: () => closeChat(),
+    skipLobby() { lobbyStartAt = Date.now() - 1; },
     setPos(x, y, a, p) { me.x = x; me.y = y; me.a = a; if (p !== undefined) me.pitch = p; dirty = true; },
     fire() { me.nextFire = 0; const n = performance.now(); if (WEAPONS[me.wi].melee) meleeAttack(n, false); else fireGun(n); },
     stab() { me.nextFire = 0; meleeAttack(performance.now(), true); },
