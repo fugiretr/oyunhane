@@ -345,24 +345,26 @@ async function send(now) {
 }
 function handleData(data, now) {
   const seen = new Set();
+  const num = v => typeof v === 'number' && isFinite(v) ? v : 0;
   for (const id in data) {
     if (id === me.id) continue;
     const r = data[id];
-    if (!r || typeof r !== 'object' || typeof r.x !== 'number') continue;
+    if (!r || typeof r !== 'object' || typeof r.x !== 'number' || typeof r.y !== 'number') continue;
     seen.add(id);
+    const sx = Math.max(0, Math.min(N - 0.01, num(r.x))), sy = Math.max(0, Math.min(N - 0.01, num(r.y)));
     let o = others.get(id);
-    const dmgOnMe = (r.h && r.h[me.id]) | 0;
-    if (!o) { o = { id, dx: r.x, dy: r.y, s: -1, seenAt: now, lastD: r.d | 0, lastHit: dmgOnMe }; others.set(id, o); }
+    const dmgOnMe = r.h && typeof r.h === 'object' ? Math.max(0, num(r.h[me.id])) : 0;
+    if (!o) { o = { id, dx: sx, dy: sy, s: -1, seenAt: now, lastD: r.d | 0, lastHit: dmgOnMe }; others.set(id, o); }
     if (r.s !== o.s) {
       const dtS = o.rcv ? (now - o.rcv) / 1000 : 0;
-      if (dtS > 0.02 && dtS < 0.6) { o.vx = Math.max(-6, Math.min(6, (r.x - o.x) / dtS)); o.vy = Math.max(-6, Math.min(6, (r.y - o.y) / dtS)); } else { o.vx = 0; o.vy = 0; }
+      if (dtS > 0.02 && dtS < 0.6) { o.vx = Math.max(-6, Math.min(6, (sx - o.x) / dtS)); o.vy = Math.max(-6, Math.min(6, (sy - o.y) / dtS)); } else { o.vx = 0; o.vy = 0; }
       o.rcv = now; o.s = r.s; o.seenAt = now;
     }
     o.name = String(r.n || '?').slice(0, 14); o.team = r.c === 1 ? 1 : 0;
-    o.x = r.x; o.y = r.y; o.a = r.a || 0; o.hp = r.p; o.k = r.k | 0; o.d = r.d | 0; o.by = r.b || ''; o.w = r.w | 0;
+    o.x = sx; o.y = sy; o.a = num(r.a); o.hp = Math.max(0, Math.min(100, num(r.p))); o.k = Math.max(0, r.k | 0); o.d = Math.max(0, r.d | 0); o.by = String(r.b || '').slice(0, 14); o.w = Math.max(0, Math.min(2, r.w | 0));
     if (dmgOnMe > o.lastHit) {
-      const delta = dmgOnMe - o.lastHit; o.lastHit = dmgOnMe;
-      if (o.team !== me.team) applyDamage(delta, id);
+      const delta = Math.min(150, Math.round(dmgOnMe - o.lastHit)); o.lastHit = dmgOnMe;
+      if (o.team !== me.team && delta > 0) applyDamage(delta, id);
     }
     if (o.d > o.lastD) {
       o.lastD = o.d;
@@ -1020,9 +1022,14 @@ function startBots() {
 async function startOnline() {
   botBtn.disabled = onlineBtn.disabled = true; statusEl.textContent = 'Bağlanılıyor...';
   readName();
-  try { me.team = await pickTeam(); }
+  try {
+    me.team = await pickTeam();
+    /* Kurallar yazmaya izin veriyor mu? İlk kayıtla hemen doğrula. */
+    const w = await fetch(DB_URL + '/players/' + me.id + '.json', { method: 'PUT', body: snapshot() });
+    if (!w.ok) throw new Error('write ' + w.status);
+  }
   catch (e) {
-    statusEl.textContent = 'Online bağlantı kurulamadı (internet ya da okul engeli olabilir). İstersen botlarla oynayabilirsin.';
+    statusEl.textContent = 'Online sunucuya yazılamadı (internet/okul engeli ya da veritabanı izni olabilir). İstersen botlarla oynayabilirsin.';
     botBtn.disabled = onlineBtn.disabled = false; return;
   }
   mode = 'online'; online = true; begin(); send(performance.now()); startStream();
@@ -1031,14 +1038,18 @@ botBtn.addEventListener('click', startBots);
 onlineBtn.addEventListener('click', startOnline);
 nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') startBots(); });
 
-window.__g = { me, others, bots, MAP, WEAPONS,
-  get online() { return online; }, get started() { return started; }, get mode() { return mode; },
-  setPos(x, y, a, p) { me.x = x; me.y = y; me.a = a; if (p !== undefined) me.pitch = p; dirty = true; },
-  fire() { me.nextFire = 0; const n = performance.now(); if (WEAPONS[me.wi].melee) meleeAttack(n, false); else fireGun(n); },
-  stab() { me.nextFire = 0; meleeAttack(performance.now(), true); },
-  weapon(i) { selectWeapon(i, performance.now()); me.switchUntil = 0; },
-  inspect() { me.switchUntil = 0; inspect(performance.now()); },
-  horizon };
+/* Geliştirici/test API'si: sadece yerelde açık. Yayında (github.io, netlify vb.) __g hiç oluşmaz. */
+const DEBUG = location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:';
+if (DEBUG) {
+  window.__g = { me, others, bots, MAP, WEAPONS,
+    get online() { return online; }, get started() { return started; }, get mode() { return mode; },
+    setPos(x, y, a, p) { me.x = x; me.y = y; me.a = a; if (p !== undefined) me.pitch = p; dirty = true; },
+    fire() { me.nextFire = 0; const n = performance.now(); if (WEAPONS[me.wi].melee) meleeAttack(n, false); else fireGun(n); },
+    stab() { me.nextFire = 0; meleeAttack(performance.now(), true); },
+    weapon(i) { selectWeapon(i, performance.now()); me.switchUntil = 0; },
+    inspect() { me.switchUntil = 0; inspect(performance.now()); },
+    horizon };
+}
 requestAnimationFrame(frame);
 })();
 </script>
