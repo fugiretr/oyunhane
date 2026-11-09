@@ -64,7 +64,7 @@ const W = 480, H = 270, HALF = H / 2, PITCH_PX = 220;
 const FOV_PLANE = Math.tan(Math.PI / 6);
 const RADIUS = 0.2, STAND_Z = 0.8, CROUCH_Z = 0.55;
 const RESPAWN_MS = 3000, SWITCH_MS = 420, INSPECT_MS = 2400;
-const SEND_MS = 90, POLL_MS = 250, STALE_MS = 5000;
+const SEND_MS = 120, POLL_MS = 250, STALE_MS = 5000;
 const TEAM_NAMES = ["MAVİ", "KIRMIZI"];
 const TEAM_COLORS = ["#4aa3ff", "#ff5b5b"];
 
@@ -251,7 +251,7 @@ const me = { id: rid(), name: 'Oyuncu', team: 0, x: 2, y: 2, a: 0, pitch: 0, hp:
 const others = new Map();
 const bots = [];
 const feed = [];
-let mode = '', started = false, online = false, netFail = 0, seq = 0, dirty = true, lastSend = 0, diff = 1, sending = false, wasMv = false;
+let mode = '', started = false, online = false, netFail = 0, seq = 0, dirty = true, metaDirty = true, netDirty = false, lastSend = 0, diff = 1, sending = false, wasMv = false;
 let hitMarker = 0, hitHead = false, dmgFlash = 0, kick = 0, bob = 0, flashUntil = 0, lastDamager = '', punch = 0, shotsSince = 0;
 const keys = {};
 let firing = false, clickPending = false;
@@ -324,7 +324,7 @@ function killText(by, victim) { return nameOf(by) + ' [' + wepOf(by) + ']  ›  
 
 function applyDamage(amount, byId) {
   if (me.dead || performance.now() < me.protectUntil) return;
-  me.hp -= amount; dmgFlash = 1; lastDamager = byId; snd('hit'); dirty = true;
+  me.hp -= amount; dmgFlash = 1; lastDamager = byId; snd('hit'); dirty = true; metaDirty = true;
   if (me.hp <= 0) {
     me.hp = 0; me.dead = true; me.d++; me.by = byId; me.respawnAt = performance.now() + RESPAWN_MS; firing = false;
     snd('death'); addFeed(killText(byId, me.name));
@@ -334,13 +334,25 @@ function applyDamage(amount, byId) {
 
 /* ================= Ağ (online mod) ================= */
 const r2 = v => Math.round(v * 100) / 100;
-function snapshot() {
-  return JSON.stringify({ n: me.name, c: me.team, x: r2(me.x), y: r2(me.y), a: r2(me.a), p: Math.max(0, me.hp), k: me.k, d: me.d, b: me.by, w: me.wi, h: me.h, s: ++seq, t: Date.now() });
+/* Tam durum: isim, takım, can, skor, hasar tablosu. Sadece değiştiğinde gönderilir. */
+function fullState() {
+  return { n: me.name, c: me.team, x: r2(me.x), y: r2(me.y), a: r2(me.a), p: Math.max(0, me.hp), k: me.k, d: me.d, b: me.by, w: me.wi, h: me.h, s: ++seq, t: Date.now() };
+}
+/* Hafif paket: sadece hareket. 120 ms'de bir gider, Firebase'e yük bindirmez. */
+function tickState() {
+  return { x: r2(me.x), y: r2(me.y), a: r2(me.a), s: ++seq, t: Date.now() };
 }
 async function send(now) {
   if (sending) { dirty = true; return; }
   sending = true; lastSend = now; dirty = false;
-  try { await fetch(DB_URL + '/players/' + me.id + '.json', { method: 'PUT', body: snapshot(), keepalive: true }); } catch (e) {}
+  const full = metaDirty; metaDirty = false;
+  const body = JSON.stringify(full ? fullState() : tickState());
+  let ok = false;
+  try {
+    const res = await fetch(DB_URL + '/players/' + me.id + '.json', { method: full ? 'PUT' : 'PATCH', body });
+    ok = res.ok;
+  } catch (e) {}
+  if (full && !ok) metaDirty = true;
   sending = false;
 }
 function handleData(data, now) {
@@ -354,14 +366,21 @@ function handleData(data, now) {
     const sx = Math.max(0, Math.min(N - 0.01, num(r.x))), sy = Math.max(0, Math.min(N - 0.01, num(r.y)));
     let o = others.get(id);
     const dmgOnMe = r.h && typeof r.h === 'object' ? Math.max(0, num(r.h[me.id])) : 0;
-    if (!o) { o = { id, dx: sx, dy: sy, s: -1, seenAt: now, lastD: r.d | 0, lastHit: dmgOnMe }; others.set(id, o); }
+    if (!o) { o = { id, dx: sx, dy: sy, s: -1, seenAt: now, lastD: r.d | 0, lastHit: dmgOnMe, name: '?', team: r.c === 1 ? 1 : 0, a: 0, hp: 100, k: 0, d: 0, by: '', w: 0, vx: 0, vy: 0 }; others.set(id, o); }
     if (r.s !== o.s) {
       const dtS = o.rcv ? (now - o.rcv) / 1000 : 0;
       if (dtS > 0.02 && dtS < 0.6) { o.vx = Math.max(-6, Math.min(6, (sx - o.x) / dtS)); o.vy = Math.max(-6, Math.min(6, (sy - o.y) / dtS)); } else { o.vx = 0; o.vy = 0; }
       o.rcv = now; o.s = r.s; o.seenAt = now;
     }
-    o.name = String(r.n || '?').slice(0, 14); o.team = r.c === 1 ? 1 : 0;
-    o.x = sx; o.y = sy; o.a = num(r.a); o.hp = Math.max(0, Math.min(100, num(r.p))); o.k = Math.max(0, r.k | 0); o.d = Math.max(0, r.d | 0); o.by = String(r.b || '').slice(0, 14); o.w = Math.max(0, Math.min(2, r.w | 0));
+    if (r.n !== undefined) o.name = String(r.n || '?').slice(0, 14);
+    if (r.c !== undefined) o.team = r.c === 1 ? 1 : 0;
+    o.x = sx; o.y = sy;
+    if (r.a !== undefined) o.a = num(r.a);
+    if (r.p !== undefined) o.hp = Math.max(0, Math.min(100, num(r.p)));
+    if (r.k !== undefined) o.k = Math.max(0, r.k | 0);
+    if (r.d !== undefined) o.d = Math.max(0, r.d | 0);
+    if (r.b !== undefined) o.by = String(r.b || '').slice(0, 14);
+    if (r.w !== undefined) o.w = Math.max(0, Math.min(2, r.w | 0));
     if (dmgOnMe > o.lastHit) {
       const delta = Math.min(150, Math.round(dmgOnMe - o.lastHit)); o.lastHit = dmgOnMe;
       if (o.team !== me.team && delta > 0) applyDamage(delta, id);
@@ -369,7 +388,7 @@ function handleData(data, now) {
     if (o.d > o.lastD) {
       o.lastD = o.d;
       if (o.by) addFeed(killText(o.by, o.name));
-      if (o.by === me.id) { me.k++; dirty = true; snd('hit'); }
+      if (o.by === me.id) { me.k++; dirty = true; metaDirty = true; snd('hit'); }
     }
   }
   for (const [id, o] of others) {
@@ -394,7 +413,7 @@ function startStream() {
   if (typeof EventSource === 'undefined') { poll(); return; }
   es = new EventSource(DB_URL + '/players.json');
   const onMsg = merge => ev => {
-    try { const m = JSON.parse(ev.data); applyPath(m.path, m.data, merge); handleData(netCache, performance.now()); netFail = 0; online = true; sseOk = true; } catch (e) {}
+    try { const m = JSON.parse(ev.data); applyPath(m.path, m.data, merge); netDirty = true; netFail = 0; online = true; sseOk = true; } catch (e) {}
   };
   es.addEventListener('put', onMsg(false)); es.addEventListener('patch', onMsg(true));
   es.onerror = () => { netFail++; if (!sseOk && netFail >= 3) { es.close(); es = null; poll(); } else if (netFail >= 6) online = false; };
@@ -507,7 +526,7 @@ function respawn() {
   const sp = SPAWNS[me.team][Math.floor(Math.random() * SPAWNS[me.team].length)];
   me.x = sp[0]; me.y = sp[1]; me.a = Math.atan2(12 - me.y, 12 - me.x); me.pitch = 0;
   me.hp = 100; me.dead = false; me.ammo = [30, 12, 0]; me.reloadUntil = 0; me.inspectUntil = 0; me.slashUntil = 0;
-  me.protectUntil = performance.now() + 1500; me.switchUntil = performance.now() + SWITCH_MS; dirty = true;
+  me.protectUntil = performance.now() + 1500; me.switchUntil = performance.now() + SWITCH_MS; dirty = true; metaDirty = true;
 }
 function targets(now) {
   if (mode === 'bots') return bots.filter(b => b.hp > 0);
@@ -516,7 +535,7 @@ function targets(now) {
 function dealDamage(t, dmg, now, head) {
   hitMarker = now + 170; hitHead = !!head; snd(head ? 'head' : 'hit');
   if (t.bot) damageBot(t, dmg, me.id, now);
-  else { me.h[t.id] = (me.h[t.id] || 0) + dmg; dirty = true; }
+  else { me.h[t.id] = (me.h[t.id] || 0) + dmg; dirty = true; metaDirty = true; }
 }
 function curZ() { return me.z + me.jz; }
 function horizon() { return Math.round(HALF + (me.pitch + punch) * PITCH_PX); }
@@ -571,7 +590,7 @@ function reload(now) {
 }
 function selectWeapon(i, now) {
   if (i === me.wi || me.dead) return;
-  me.wi = i; me.reloadUntil = 0; me.inspectUntil = 0; me.slashUntil = 0; me.switchUntil = now + SWITCH_MS; me.nextFire = now + 250; dirty = true;
+  me.wi = i; me.reloadUntil = 0; me.inspectUntil = 0; me.slashUntil = 0; me.switchUntil = now + SWITCH_MS; me.nextFire = now + 250; dirty = true; metaDirty = true;
 }
 function inspect(now) {
   if (me.dead || me.reloadUntil > now || now < me.switchUntil || me.inspectUntil > now) return;
@@ -579,6 +598,7 @@ function inspect(now) {
 }
 
 function update(dt, now) {
+  if (mode === 'online' && netDirty) { netDirty = false; handleData(netCache, now); }
   if (me.dead) { if (now >= me.respawnAt) respawn(); }
   else {
     let fx = 0, fy = 0;
@@ -615,8 +635,12 @@ function update(dt, now) {
   }
   if (now - shotsSince > 120) punch = Math.max(0, punch - dt * 0.55);
   for (const o of others.values()) {
-    const ex = Math.min(0.12, Math.max(0, (now - (o.rcv || now)) / 1000)), k = Math.min(1, dt * 18);
-    o.dx += (o.x + (o.vx || 0) * ex - o.dx) * k; o.dy += (o.y + (o.vy || 0) * ex - o.dy) * k;
+    /* Son paketten bu yana geçen süre kadar ileriye tahmin et, sonra yumuşakça yaklaş.
+       Böylece paketler 120 ms'de bir gelse bile hareket akıcı görünür. */
+    const age = Math.min(0.35, Math.max(0, (now - (o.rcv || now)) / 1000));
+    const tx = o.x + (o.vx || 0) * age, ty = o.y + (o.vy || 0) * age;
+    const k = Math.min(1, dt * 25);
+    o.dx += (tx - o.dx) * k; o.dy += (ty - o.dy) * k;
   }
   if (mode === 'bots') for (const b of bots) updateBot(b, dt, now);
   kick = Math.max(0, kick - dt * 8); dmgFlash = Math.max(0, dmgFlash - dt * 2);
@@ -1025,7 +1049,7 @@ async function startOnline() {
   try {
     me.team = await pickTeam();
     /* Kurallar yazmaya izin veriyor mu? İlk kayıtla hemen doğrula. */
-    const w = await fetch(DB_URL + '/players/' + me.id + '.json', { method: 'PUT', body: snapshot() });
+    const w = await fetch(DB_URL + '/players/' + me.id + '.json', { method: 'PUT', body: JSON.stringify(fullState()) });
     if (!w.ok) throw new Error('write ' + w.status);
   }
   catch (e) {
