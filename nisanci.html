@@ -54,14 +54,14 @@ canvas { position:fixed; display:block; }
 #lobbyInfo.play { color:#5ce08a; }
 .teams { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 @media (max-width:520px) { .teams { grid-template-columns:1fr; } }
-.team { background:#10111b; border:1px solid #2b2d44; border-radius:10px; padding:10px 12px; min-height:168px; }
-.team h3 { margin:0 0 8px; font-size:15px; display:flex; justify-content:space-between; }
-.team.blue h3 { color:#4aa3ff; }
-.team.red h3 { color:#ff5b5b; }
-.team ul { list-style:none; margin:0; padding:0; }
-.team li { padding:5px 0; font-size:14px; color:#d8d8e8; border-bottom:1px solid #1d1f30; }
-.team li.me { color:#fff; font-weight:bold; }
-.team li.empty { color:#5a5c72; border:0; font-style:italic; }
+.teams .team { background:#10111b; border:1px solid #2b2d44; border-radius:10px; padding:10px 12px; min-height:168px; }
+.teams .team h3 { margin:0 0 8px; font-size:15px; display:flex; justify-content:space-between; }
+.teams .team.blue h3 { color:#4aa3ff; }
+.teams .team.red h3 { color:#ff5b5b; }
+.teams .team ul { list-style:none; margin:0; padding:0; }
+.teams .team li { padding:5px 0; font-size:14px; color:#d8d8e8; border-bottom:1px solid #1d1f30; }
+.teams .team li.me { color:#fff; font-weight:bold; }
+.teams .team li.empty { color:#5a5c72; border:0; font-style:italic; }
 #teamBtns { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; justify-content:center; }
 #teamBtns button { padding:10px 16px; border:0; border-radius:9px; color:#fff; font-weight:bold; cursor:pointer; font-size:13px; background:#2b2d44; font-family:inherit; }
 #teamBtns button.blue { background:#2f6fb5; }
@@ -83,9 +83,9 @@ canvas { position:fixed; display:block; }
 #chatLog::-webkit-scrollbar-thumb { background:rgba(150,150,190,.5); border-radius:3px; }
 #chatLog::-webkit-scrollbar-track { background:transparent; }
 #chat.open #chatLog { border-color:#7967f5; max-height:var(--chat-open-max,92px); }
-#chatLog .msg { margin:1px 0; word-wrap:break-word; color:#e8e8f4; }
+#chatLog .msg { margin:1px 0; word-wrap:break-word; color:#e8e8f4; padding:0; min-height:0; border:0; border-radius:0; background:none; }
 #chatLog .msg.all b { color:#ffd166; }
-#chatLog .msg.team b { color:#7fb8ff; }
+#chatLog .msg.tm b { color:#7fb8ff; }
 #chatLog .msg .tag { font-size:8px; opacity:.7; margin-right:3px; }
 #chatLog .msg.empty { color:#7a7c92; font-style:italic; }
 #chatMsg { display:none; margin-top:4px; }
@@ -1552,7 +1552,7 @@ function renderChat() {
   chatLog.innerHTML = items.length
     ? items.map(m => {
         const all = m.ch === 'a';
-        return '<div class="msg ' + (all ? 'all' : 'team') + '"><span class="tag">' + (all ? 'HERKES' : 'TAKIM') +
+        return '<div class="msg ' + (all ? 'all' : 'tm') + '"><span class="tag">' + (all ? 'HERKES' : 'TAKIM') +
           ' • ' + (m.t === 1 ? 'KIRMIZI' : 'MAVİ') + '</span><b>' + escapeHtml(m.n) + ':</b> ' + escapeHtml(m.m) + '</div>';
       }).join('')
     : '<div class="msg empty">Henüz mesaj yok. T = herkes, Y = takım.</div>';
