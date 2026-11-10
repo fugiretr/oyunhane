@@ -171,7 +171,10 @@ const W = 480, H = 270, HALF = H / 2, PITCH_PX = 220;
 const FOV_PLANE = Math.tan(Math.PI / 6);
 const RADIUS = 0.2, STAND_Z = 0.8, CROUCH_Z = 0.55;
 const RESPAWN_MS = 3000, SWITCH_MS = 420, INSPECT_MS = 2400;
-const SEND_MS = 120, POLL_MS = 250, STALE_MS = 5000;
+/* Trafik bütçesi: bir odadaki indirme ~ oyuncu² × gönderim sıklığı.
+   Kalabalık odada tick'i seyreltiyoruz; az kişide akıcı kalıyor. */
+const TICK_GAP = [120, 120, 150, 190, 230, 270, 305, 350], IDLE_MS = 2000;
+const POLL_MS = 900, STALE_MS = 5000;
 const ROOMS = ['room1', 'room2', 'room3', 'room4'], ROOM_MAX = 8, LOBBY_MS = 15000, ROUND_MS = 5 * 60 * 1000, CHAT_KEEP = 12;
 const TEAM_NAMES = ["MAVİ", "KIRMIZI"];
 const TEAM_COLORS = ["#4aa3ff", "#ff5b5b"];
@@ -359,7 +362,7 @@ const me = { id: rid(), name: 'Oyuncu', room: '', team: 0, x: 2, y: 2, a: 0, pit
 const others = new Map();
 const bots = [];
 const feed = [];
-let mode = '', started = false, online = false, netFail = 0, seq = 0, dirty = true, metaDirty = true, netDirty = false, lastSend = 0, diff = 1, sending = false, wasMv = false;
+let mode = '', started = false, online = false, netFail = 0, seq = 0, dirty = true, metaDirty = true, netDirty = false, lastSend = 0, diff = 1, sending = false, wasMv = false, lastA = 9;
 let inLobby = false, lobbyStartAt = 0, lobbyTickAt = 0, lastLobbySend = 0, matchEndAt = 0, lobbyHoldUntil = 0;
 let chatOpen = false, chatCh = 'all', chatPeekUntil = 0, lastChatS = 0;
 let hitMarker = 0, hitHead = false, dmgFlash = 0, kick = 0, bob = 0, flashUntil = 0, lastDamager = '', punch = 0, shotsSince = 0;
@@ -466,13 +469,13 @@ const roomUrl = () => DB_URL + '/players/' + me.room + '.json';
 function fullState() {
   return { n: me.name, c: me.team, x: r2(me.x), y: r2(me.y), a: r2(me.a), p: Math.max(0, me.hp), k: me.k, d: me.d, b: me.by, w: me.wi, h: me.h, s: ++seq, t: Date.now() };
 }
-/* Hafif paket: sadece hareket. 120 ms'de bir gider, Firebase'e yük bindirmez. */
+/* Hafif paket: sadece hareket. Oda kalabalığına göre 120–350 ms'de bir gider. */
 function tickState() {
   return { x: r2(me.x), y: r2(me.y), a: r2(me.a), s: ++seq, t: Date.now() };
 }
 async function send(now) {
   if (sending) { dirty = true; return; }
-  sending = true; lastSend = now; dirty = false;
+  sending = true; lastSend = now; dirty = false; lastA = me.a;
   const full = metaDirty; metaDirty = false;
   const body = JSON.stringify(full ? fullState() : tickState());
   let ok = false;
@@ -775,8 +778,9 @@ function update(dt, now) {
   if (now - shotsSince > 120) punch = Math.max(0, punch - dt * 0.55);
   for (const o of others.values()) {
     if (blocked(o.dx, o.dy)) { o.dx = o.x; o.dy = o.y; }
-    /* Son paketten bu yana geçen süre kadar ileriye tahmin et; tahmin duvarı geçemez. */
-    const age = Math.min(0.35, Math.max(0, (now - (o.rcv || now)) / 1000));
+    /* Son paketten bu yana geçen süre kadar ileriye tahmin et; tahmin duvarı geçemez.
+       Tick 350 ms'ye kadar seyrelebildiği için tavan biraz yüksek tutuldu. */
+    const age = Math.min(0.45, Math.max(0, (now - (o.rcv || now)) / 1000));
     const p = predictPos(o, age);
     const k = Math.min(1, dt * 25);
     const nx = o.dx + (p[0] - o.dx) * k, ny = o.dy + (p[1] - o.dy) * k;
@@ -787,8 +791,13 @@ function update(dt, now) {
   kick = Math.max(0, kick - dt * 8); dmgFlash = Math.max(0, dmgFlash - dt * 2);
   if (mode === 'online' && started) {
     if (wasMv && !me.moving) dirty = true; wasMv = me.moving;
-    const interval = (me.moving || dirty) ? SEND_MS : 1500;
-    if (now - lastSend >= interval) send(now);
+    /* Etrafa bakarken de hızlı paket: durup dönen oyuncu 2 saniye gecikmesin. */
+    if (Math.abs(me.a - lastA) > 0.05) dirty = true;
+    /* Oda mevcuduna göre tick aralığı: 8 kişide 350 ms, 2 kişide 120 ms. */
+    let n = 1;
+    for (const o of others.values()) if (fresh(o, now)) n++;
+    const gap = dirty || me.moving ? TICK_GAP[Math.min(7, n - 1)] : IDLE_MS;
+    if (now - lastSend >= gap) send(now);
   }
 }
 
