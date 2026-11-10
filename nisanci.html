@@ -48,7 +48,7 @@ canvas { position:fixed; display:block; }
 
 /* --- Lobi --- */
 #lobby { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(8,9,16,.94); z-index:6; overflow:auto; }
-#lobby .box { width:min(660px,94vw); background:#171827; border:1px solid #383254; border-radius:16px; padding:22px; margin:12px; }
+#lobby .box { width:min(660px,94vw); background:#171827; border:1px solid #383254; border-radius:16px; padding:22px; padding-bottom:84px; margin:12px; }
 #lobby h1 { margin:0; font-size:24px; color:#8b7cff; text-align:center; }
 #lobbyInfo { text-align:center; margin:6px 0 14px; color:#ffcf5c; font-weight:bold; font-size:16px; min-height:20px; }
 #lobbyInfo.play { color:#5ce08a; }
@@ -75,20 +75,22 @@ canvas { position:fixed; display:block; }
 #lobby .keys { margin-top:12px; font-size:12px; color:#8a8ca3; text-align:center; border-top:1px solid #2b2d44; padding-top:10px; line-height:1.7; }
 #lobby .keys b { color:#c9c8e0; }
 
-/* --- Sohbet --- */
-#chat { position:fixed; left:14px; bottom:78px; width:min(430px,72vw); z-index:7; display:none; pointer-events:none; }
+/* --- Sohbet (küçük panel) --- */
+#chat { position:fixed; left:10px; bottom:100px; width:min(268px,56vw); z-index:7; display:none; pointer-events:none; }
 #chat.open, #chat.peek { display:block; }
-#chatLog { max-height:190px; overflow:auto; background:rgba(8,9,16,.82); border-radius:9px; padding:8px 10px; font-size:13px; line-height:1.5; border:1px solid rgba(80,80,120,.4); pointer-events:auto; }
-#chat.open #chatLog { border-color:#7967f5; }
-#chatLog .msg { margin:2px 0; word-wrap:break-word; color:#e8e8f4; }
+#chatLog { max-height:96px; overflow:auto; background:rgba(8,9,16,.78); border-radius:7px; padding:5px 7px; font-size:11px; line-height:1.32; border:1px solid rgba(80,80,120,.38); pointer-events:auto; }
+#chat.open #chatLog { border-color:#7967f5; max-height:124px; }
+#chatLog .msg { margin:1px 0; word-wrap:break-word; color:#e8e8f4; }
 #chatLog .msg.all b { color:#ffd166; }
 #chatLog .msg.team b { color:#7fb8ff; }
-#chatLog .msg .tag { font-size:10px; opacity:.75; margin-right:4px; }
+#chatLog .msg .tag { font-size:8px; opacity:.7; margin-right:3px; }
 #chatLog .msg.empty { color:#7a7c92; font-style:italic; }
-#chatMsg { display:none; margin-top:6px; }
+#chatMsg { display:none; margin-top:4px; }
 #chat.open #chatMsg { display:block; }
-#chatMsg input { width:100%; box-sizing:border-box; padding:9px 11px; background:#10111b; color:#fff; border:1px solid #44415f; border-radius:8px; font-size:14px; outline:none; pointer-events:auto; font-family:inherit; }
+#chatMsg input { width:100%; box-sizing:border-box; padding:6px 8px; background:#10111b; color:#fff; border:1px solid #44415f; border-radius:7px; font-size:12px; outline:none; pointer-events:auto; font-family:inherit; }
 #chatMsg input:focus { border-color:#8b7cff; }
+/* Lobide sohbet paneli sol üste taşınır; oyun sırasında sol altta kalır. */
+body.in-lobby #chat { top:12px; bottom:auto; }
 #leaveBtn { position:fixed; top:10px; right:10px; z-index:6; display:none; padding:7px 12px; background:rgba(180,50,60,.85); color:#fff; border:0; border-radius:8px; font-size:12px; font-weight:bold; cursor:pointer; font-family:inherit; }
 #leaveBtn:hover { background:rgba(210,60,70,.95); }
 </style>
@@ -116,7 +118,7 @@ canvas { position:fixed; display:block; }
       <b>1</b> tüfek &nbsp; <b>2</b> tabanca &nbsp; <b>3</b> bıçak &nbsp; <b>Fare tekerleği</b> silah değiştir<br>
       <b>R</b> şarjör &nbsp; <b>F</b> silahı incele &nbsp; <b>Boşluk</b> zıpla &nbsp; <b>C</b> çömel &nbsp; <b>Shift</b> yavaş yürü<br>
       <b>Bıçak:</b> sol tık = savurma, sağ tık = saplama (arkadan vurunca ölümcül) &nbsp; <b>Tab</b> skor tablosu<br>
-      <b>T</b> herkesle sohbet &nbsp; <b>Y</b> takım sohbeti &nbsp; (Enter gönder, Esc kapat)
+      <b>T</b> herkesle sohbet &nbsp; <b>Y</b> takım sohbeti &nbsp; (Enter gönder, Esc kapat) &nbsp; • &nbsp; Tur: 5 dakika
     </div>
   </div>
 </div>
@@ -145,7 +147,7 @@ canvas { position:fixed; display:block; }
       <button id="leaveRoom" class="leave">ODADAN AYRIL</button>
     </div>
     <div id="lobbyMsg"></div>
-    <div class="keys"><b>Y</b> takım sohbeti &nbsp; • &nbsp; <b>T</b> herkesle sohbet &nbsp; • &nbsp; Maç 15 saniye sonra başlar, takımını bu sürede seçebilirsin.</div>
+    <div class="keys"><b>Y</b> takım sohbeti &nbsp; • &nbsp; <b>T</b> herkesle sohbet &nbsp; • &nbsp; Maç 15 saniye sonra başlar, 5 dakika sürer. Tur bitince buraya dönersin.</div>
   </div>
 </div>
 
@@ -167,7 +169,7 @@ const FOV_PLANE = Math.tan(Math.PI / 6);
 const RADIUS = 0.2, STAND_Z = 0.8, CROUCH_Z = 0.55;
 const RESPAWN_MS = 3000, SWITCH_MS = 420, INSPECT_MS = 2400;
 const SEND_MS = 120, POLL_MS = 250, STALE_MS = 5000;
-const ROOMS = ['room1', 'room2', 'room3', 'room4'], ROOM_MAX = 8, LOBBY_MS = 15000, CHAT_KEEP = 12;
+const ROOMS = ['room1', 'room2', 'room3', 'room4'], ROOM_MAX = 8, LOBBY_MS = 15000, ROUND_MS = 5 * 60 * 1000, CHAT_KEEP = 12;
 const TEAM_NAMES = ["MAVİ", "KIRMIZI"];
 const TEAM_COLORS = ["#4aa3ff", "#ff5b5b"];
 
@@ -355,7 +357,8 @@ const others = new Map();
 const bots = [];
 const feed = [];
 let mode = '', started = false, online = false, netFail = 0, seq = 0, dirty = true, metaDirty = true, netDirty = false, lastSend = 0, diff = 1, sending = false, wasMv = false;
-let inLobby = false, lobbyStartAt = 0, lobbyTickAt = 0, lastLobbySend = 0, chatOpen = false, chatCh = 'all', chatPeekUntil = 0;
+let inLobby = false, lobbyStartAt = 0, lobbyTickAt = 0, lastLobbySend = 0, matchEndAt = 0, lobbyHoldUntil = 0;
+let chatOpen = false, chatCh = 'all', chatPeekUntil = 0, lastChatS = 0;
 let hitMarker = 0, hitHead = false, dmgFlash = 0, kick = 0, bob = 0, flashUntil = 0, lastDamager = '', punch = 0, shotsSince = 0;
 const keys = {};
 let firing = false, clickPending = false;
@@ -557,7 +560,11 @@ function handleNet(now) {
   if (mode !== 'online') return;
   handleData(netCache.players || {}, now);
   const meta = netCache.meta;
-  if (meta && typeof meta.startAt === 'number') lobbyStartAt = meta.startAt;
+  if (meta && typeof meta.startAt === 'number') {
+    lobbyStartAt = meta.startAt;
+    /* Yeni (gelecekteki) geri sayım geldiyse tur geçiş kilidini kaldır. */
+    if (meta.startAt > Date.now()) lobbyHoldUntil = 0;
+  }
   buildChat();
 }
 /* Odadaki takım mevcutları (ben dahil). */
@@ -1056,6 +1063,14 @@ function drawHud(now) {
   hctx.fillStyle = TEAM_COLORS[0]; hctx.fillText('MAVİ ' + sc[0], cw / 2 - 50 * S, 24 * S);
   hctx.fillStyle = '#fff'; hctx.fillText(':', cw / 2, 24 * S);
   hctx.fillStyle = TEAM_COLORS[1]; hctx.fillText(sc[1] + ' KIRMIZI', cw / 2 + 52 * S, 24 * S);
+  /* Tur sayacı: 5 dakikalık maçın kalan süresi. */
+  if (mode === 'online' && started && matchEndAt) {
+    const left = Math.max(0, matchEndAt - Date.now());
+    const mm = Math.floor(left / 60000), ss = Math.floor((left % 60000) / 1000);
+    hctx.textAlign = 'right'; hctx.font = 'bold ' + (12 * S | 0) + 'px Arial';
+    hctx.fillStyle = left < 30000 ? '#ff8a8a' : '#dcdcf0';
+    hctx.fillText('TUR ' + mm + ':' + String(ss).padStart(2, '0'), cw - 10 * S, 22 * S);
+  }
   hctx.font = (11 * S | 0) + 'px Arial'; hctx.fillStyle = TEAM_COLORS[me.team]; hctx.textAlign = 'left';
   hctx.fillText('Takımın: ' + TEAM_NAMES[me.team] + (mode === 'bots' ? '  •  botlarla' : '  •  ' + roomLabel(me.room)), 12 * S, 20 * S);
   if (mode === 'online') { hctx.fillStyle = 'rgba(200,200,230,.75)'; hctx.fillText('T sohbet • Y takım', 12 * S, 34 * S); }
@@ -1125,8 +1140,10 @@ function frame() {
     refreshLobby(false);
     /* Lobide hareketsizken de görünür kal: 1,2 sn'de bir küçük varlık paketi. */
     if (now - lastLobbySend > 1200) { lastLobbySend = now; send(now); }
-    if (Date.now() >= lobbyStartAt) beginOnlineMatch();
+    if (Date.now() >= lobbyStartAt && Date.now() >= lobbyHoldUntil) beginOnlineMatch();
   }
+  /* 5 dakikalık tur bitti: takım seçme ekranına dön. */
+  if (mode === 'online' && started && matchEndAt && Date.now() >= matchEndAt) endOnlineMatch();
   if (chatPeekUntil && now > chatPeekUntil) { chatPeekUntil = 0; renderChat(); }
   if (started) update(dt, now);
   render(now);
@@ -1193,6 +1210,7 @@ function enableControls(on) { botBtn.disabled = onlineBtn.disabled = !on; }
 function begin() {
   initAudio(); respawn(); me.protectUntil = 0; started = true;
   menu.style.display = 'none'; roomPick.style.display = 'none'; lobbyEl.style.display = 'none';
+  document.body.classList.remove('in-lobby');
   try { hud.requestPointerLock(); } catch (e) {}
 }
 function startBots() {
@@ -1231,10 +1249,11 @@ function renderRooms(data) {
       total++; c[p.c === 1 ? 1 : 0]++;
     }
     const meta = room.meta || {};
-    const playing = typeof meta.startAt === 'number' && meta.startAt <= now;
+    const playing = total > 0 && typeof meta.startAt === 'number' && meta.startAt <= now;
     const full = total >= ROOM_MAX;
-    const label = full ? 'DOLU' : playing ? 'MAÇTA' : total ? 'LOBİ' : 'BOŞ';
-    const cls = full ? 'full' : playing ? 'play' : total ? 'lobby' : 'empty';
+    /* Odada kimse yoksa eski tur verisi kalmış olsa bile oda BOŞ sayılır ve pasiftir. */
+    const label = !total ? 'BOŞ' : full ? 'DOLU' : playing ? 'MAÇTA' : 'LOBİ';
+    const cls = !total ? 'empty' : full ? 'full' : playing ? 'play' : 'lobby';
     if (!total) empty++;
     const b = document.createElement('button');
     b.className = 'room';
@@ -1283,9 +1302,14 @@ async function joinRoom(room) {
     me.team = c[0] <= c[1] ? 0 : 1;
     const meta = data.meta || {};
     let startAt = typeof meta.startAt === 'number' ? meta.startAt : 0;
-    if (total === 0 || !startAt) {
+    /* Odada kimse yoksa ya da 5 dakikalık tur bittiyse: yeni lobi + temiz sohbet. */
+    const expired = startAt > 0 && now >= startAt + ROUND_MS;
+    const newRound = total === 0 || !startAt || expired;
+    if (newRound) {
       startAt = now + LOBBY_MS;
+      lobbyHoldUntil = 0;
       fetch(DB_URL + '/players/' + room + '/meta.json', { method: 'PUT', body: JSON.stringify({ startAt, since: now }) }).catch(() => {});
+      resetChat(true);
     }
     me.k = 0; me.d = 0; me.by = ''; me.h = {}; me.hp = 100; me.dead = false;
     others.clear(); netCache = Object.create(null); seq = 0;
@@ -1294,13 +1318,14 @@ async function joinRoom(room) {
     const w = await fetch(playerUrl(), { method: 'PUT', body: JSON.stringify(fullState()) });
     if (!w.ok) throw new Error('write ' + w.status);
     metaDirty = false; dirty = false; lastLobbySend = performance.now();
-    mode = 'online'; online = true; started = false; inLobby = true;
+    mode = 'online'; online = true; started = false; inLobby = true; matchEndAt = 0;
     statusEl.textContent = '';
     lobbyStartAt = startAt; lobbyTickAt = 0;
     lobbyTitle.textContent = roomLabel(room);
     lobbyMsgEl.textContent = ''; lobbyInfoEl.textContent = 'Bekleniyor...';
     lobbyEl.style.display = 'flex'; leaveBtn.style.display = 'block';
-    chatMsgs.length = 0; chatPeekUntil = 0; renderChat();
+    document.body.classList.add('in-lobby');
+    chatPeekUntil = 0; renderChat();
     enableControls(false);
     startStream();
     refreshLobby(true);
@@ -1309,14 +1334,27 @@ async function joinRoom(room) {
   }
 }
 function backToMenu(msg) {
-  if (mode === 'online' && me.room) {
-    try { fetch(playerUrl(), { method: 'DELETE', keepalive: true }); } catch (e) {}
+  const wasOnline = mode === 'online' && !!me.room;
+  if (wasOnline) {
+    const room = me.room;
+    const hadOthers = [...others.values()].some(o => fresh(o, performance.now()));
+    try {
+      fetch(playerUrl(), { method: 'DELETE', keepalive: true });
+      /* Odada başka canlı oyuncu yoksa oda tamamen pasif kalsın:
+         eski tur sayacı ve sohbet verisi silinir; sıradaki giriş temiz başlar. */
+      if (!hadOthers) {
+        fetch(DB_URL + '/players/' + room + '/meta.json', { method: 'DELETE', keepalive: true }).catch(() => {});
+        fetch(DB_URL + '/players/' + room + '/chat.json', { method: 'DELETE', keepalive: true }).catch(() => {});
+      }
+    } catch (e) {}
   }
   if (es) { es.close(); es = null; }
   mode = ''; online = false; started = false; inLobby = false; me.room = '';
+  matchEndAt = 0; lobbyHoldUntil = 0;
   others.clear(); netCache = Object.create(null); seq = 0; netDirty = false; sending = false;
-  chatMsgs.length = 0; chatPeekUntil = 0; closeChat();
+  chatMsgs.length = 0; chatPeekUntil = 0; lastChatS = 0; closeChat();
   lobbyEl.style.display = 'none'; roomPick.style.display = 'none'; leaveBtn.style.display = 'none';
+  document.body.classList.remove('in-lobby');
   menu.style.display = 'flex';
   enableControls(true);
   statusEl.textContent = msg || '';
@@ -1384,32 +1422,104 @@ function joinTeam(t) {
   refreshLobby(true);
 }
 function beginOnlineMatch() {
-  if (!inLobby) return;
-  inLobby = false;
+  if (!inLobby || mode !== 'online') return;
+  const now = Date.now();
+  /* meta çok eskiyse (boş odadan kalma) turu şimdi başlat, sonsuz döngüye girme. */
+  if (!(lobbyStartAt > now - ROUND_MS)) lobbyStartAt = now;
+  matchEndAt = lobbyStartAt + ROUND_MS;
+  inLobby = false; lobbyHoldUntil = 0;
   lobbyEl.style.display = 'none';
   lobbyMsgEl.textContent = '';
+  /* Her tur başında sohbet sıfırlanır (tek istemci temizler). */
+  resetChat(isHost());
   begin();
   send(performance.now());
+}
+/* Tur bitti: skorlar sıfırlanır, oyuncular lobiye/takım seçimine döner. */
+function endOnlineMatch() {
+  if (!started || mode !== 'online' || !me.room) return;
+  started = false; inLobby = true; matchEndAt = 0;
+  firing = false; for (const k in keys) keys[k] = false;
+  if (document.pointerLockElement) { try { document.exitPointerLock(); } catch (e) {} }
+  me.k = 0; me.d = 0; me.by = ''; me.h = {};
+  me.hp = 100; me.dead = false;
+  respawn();
+  metaDirty = true; dirty = true;
+  lobbyTitle.textContent = roomLabel(me.room);
+  lobbyEl.style.display = 'flex';
+  document.body.classList.add('in-lobby');
+  lobbyMsgEl.textContent = 'Tur bitti! Yeni tur için takımını seçebilirsin.';
+  addFeed('TUR BİTTİ • yeni tur 15 sn sonra');
+  resetChat(isHost());
+  send(performance.now());
+  refreshLobby(true);
+
+  const newStart = Date.now() + LOBBY_MS;
+  /* Başka bir istemci lobiyi çoktan yeniden başlattıysa onun geri sayımını kullan. */
+  const shared = netCache.meta;
+  const sharedFuture = shared && typeof shared.startAt === 'number' && shared.startAt > Date.now();
+  lobbyStartAt = sharedFuture ? shared.startAt : newStart;
+  lobbyHoldUntil = sharedFuture ? 0 : Date.now() + 3000;
+  if (sharedFuture) return;
+  if (isHost()) writeMeta(newStart);
+  else setTimeout(() => {
+    if (!inLobby || !me.room) return;
+    const m = netCache.meta;
+    if (m && typeof m.startAt === 'number' && m.startAt > Date.now()) return;
+    writeMeta(Date.now() + LOBBY_MS);
+  }, 2000);
+}
+function writeMeta(startAt) {
+  if (!me.room) return;
+  fetch(DB_URL + '/players/' + me.room + '/meta.json', { method: 'PUT', body: JSON.stringify({ startAt, since: Date.now() }) })
+    .then(r => { if (r.ok) { lobbyStartAt = startAt; lobbyHoldUntil = 0; } })
+    .catch(() => {});
+}
+/* Odadaki en küçük kimliğe sahip canlı oyuncu "host" sayılır.
+   Böylece tur sonu sohbet temizliği/meta yazımı tek istemcide olur. */
+function isHost(now = performance.now()) {
+  for (const o of others.values()) if (fresh(o, now) && o.id < me.id) return false;
+  return true;
 }
 
 /* ================= Sohbet ================= */
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 }
+/* Sohbeti sıfırla: yerel listeyi hemen boşalt, istenirse veritabanındaki
+   oda sohbetini de sil (tur başında/sonunda bir kez). */
+function resetChat(clearRemote) {
+  chatMsgs.length = 0;
+  chatPeekUntil = 0;
+  chatOpen = false;
+  lastChatS = Date.now() - 1;
+  try { chatInput.blur(); } catch (e) {}
+  renderChat();
+  if (!clearRemote || !me.room) return;
+  netCache.chat = undefined;
+  fetch(DB_URL + '/players/' + me.room + '/chat.json', { method: 'DELETE' }).catch(() => {});
+}
 function buildChat() {
   const c = netCache.chat || {}, out = [];
+  let newest = 0;
   for (const ch of ['a', 't0', 't1']) {
     const node = c[ch];
     if (!node || typeof node !== 'object') continue;
     for (const k in node) {
       const m = node[k];
       if (!m || typeof m.m !== 'string') continue;
-      out.push({ ch, n: String(m.n || '?').slice(0, 14), t: m.t === 1 ? 1 : 0, m: String(m.m).slice(0, 120), s: typeof m.s === 'number' ? m.s : 0 });
+      const s = typeof m.s === 'number' ? m.s : 0;
+      if (s > newest) newest = s;
+      out.push({ ch, n: String(m.n || '?').slice(0, 14), t: m.t === 1 ? 1 : 0, m: String(m.m).slice(0, 120), s });
     }
   }
   out.sort((a, b) => a.s - b.s);
+  /* Panel sadece YENİ mesaj gelince kısa süre görünür; eski mesajlar paneli açık tutmaz. */
+  if (newest > lastChatS) {
+    if (lastChatS) chatPeekUntil = performance.now() + 5000;
+    lastChatS = newest;
+  }
   const show = out.filter(m => m.ch === 'a' || m.ch === 't' + me.team);
-  if (show.length) chatPeekUntil = performance.now() + 8000;
   chatMsgs.length = 0;
   for (let i = Math.max(0, show.length - 40); i < show.length; i++) chatMsgs.push(show[i]);
   renderChat();
@@ -1421,7 +1531,7 @@ function renderChat() {
   chatEl.classList.toggle('peek', !open && peek);
   if (!open && !peek) return;
   if (!chatOpen) chatEl.classList.remove('open');
-  const items = open ? chatMsgs : chatMsgs.slice(-6);
+  const items = open ? chatMsgs : chatMsgs.slice(-4);
   chatLog.innerHTML = items.length
     ? items.map(m => {
         const all = m.ch === 'a';
@@ -1440,7 +1550,7 @@ function openChat(kind) {
   for (const k in keys) keys[k] = false;
   firing = false;
   if (document.pointerLockElement) { try { document.exitPointerLock(); } catch (e) {} }
-  chatPeekUntil = performance.now() + 8000;
+  chatPeekUntil = performance.now() + 5000;
   renderChat();
   setTimeout(() => { try { chatInput.focus(); } catch (e) {} }, 0);
 }
@@ -1466,7 +1576,7 @@ function sendChat() {
   const body = JSON.stringify({ n: me.name, t: me.team, m: text, s: Date.now() });
   fetch(DB_URL + '/players/' + me.room + '/chat/' + ch + '/' + key + '.json', { method: 'PUT', body })
     .then(() => pruneChat(ch)).catch(() => {});
-  chatPeekUntil = performance.now() + 8000;
+  chatPeekUntil = performance.now() + 5000;
 }
 chatInput.addEventListener('keydown', e => {
   e.stopPropagation();
@@ -1492,10 +1602,13 @@ if (DEBUG) {
   window.__g = { me, others, bots, MAP, WEAPONS,
     get online() { return online; }, get started() { return started; }, get mode() { return mode; },
     get room() { return me.room; }, get inLobby() { return inLobby; }, get lobbyStartAt() { return lobbyStartAt; },
+    get matchEndAt() { return matchEndAt; }, get roundLeft() { return Math.max(0, matchEndAt - Date.now()); },
     get chat() { return chatMsgs.slice(); },
     joinRoom: id => joinRoom(id), switchTeam: t => joinTeam(t), sendChat: t => { chatInput.value = t; chatCh = chatCh || 'all'; sendChat(); },
     openChat: k => openChat(k), closeChat: () => closeChat(),
-    skipLobby() { lobbyStartAt = Date.now() - 1; },
+    skipLobby() { lobbyHoldUntil = 0; lobbyStartAt = Date.now() - 1; },
+    endMatch() { matchEndAt = Date.now() - 1; },
+    setRoundLeft(ms) { matchEndAt = Date.now() + Math.max(0, ms | 0); },
     setPos(x, y, a, p) { me.x = x; me.y = y; me.a = a; if (p !== undefined) me.pitch = p; dirty = true; },
     fire() { me.nextFire = 0; const n = performance.now(); if (WEAPONS[me.wi].melee) meleeAttack(n, false); else fireGun(n); },
     stab() { me.nextFire = 0; meleeAttack(performance.now(), true); },
