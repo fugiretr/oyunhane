@@ -75,11 +75,14 @@ canvas { position:fixed; display:block; }
 #lobby .keys { margin-top:12px; font-size:12px; color:#8a8ca3; text-align:center; border-top:1px solid #2b2d44; padding-top:10px; line-height:1.7; }
 #lobby .keys b { color:#c9c8e0; }
 
-/* --- Sohbet (küçük panel) --- */
-#chat { position:fixed; left:10px; bottom:100px; width:min(268px,56vw); z-index:7; display:none; pointer-events:none; }
+/* --- Sohbet (oyun çerçevesine gömülü, küçük panel) --- */
+#chat { position:fixed; left:var(--chat-left,10px); bottom:var(--chat-bottom,84px); width:250px; z-index:7; display:none; pointer-events:none; }
 #chat.open, #chat.peek { display:block; }
-#chatLog { max-height:96px; overflow:auto; background:rgba(8,9,16,.78); border-radius:7px; padding:5px 7px; font-size:11px; line-height:1.32; border:1px solid rgba(80,80,120,.38); pointer-events:auto; }
-#chat.open #chatLog { border-color:#7967f5; max-height:124px; }
+#chatLog { max-height:var(--chat-log-max,66px); overflow:auto; background:rgba(8,9,16,.78); border-radius:7px; padding:5px 7px; font-size:11px; line-height:1.32; border:1px solid rgba(80,80,120,.38); pointer-events:auto; scrollbar-width:thin; scrollbar-color:rgba(150,150,190,.5) transparent; }
+#chatLog::-webkit-scrollbar { width:5px; }
+#chatLog::-webkit-scrollbar-thumb { background:rgba(150,150,190,.5); border-radius:3px; }
+#chatLog::-webkit-scrollbar-track { background:transparent; }
+#chat.open #chatLog { border-color:#7967f5; max-height:var(--chat-open-max,92px); }
 #chatLog .msg { margin:1px 0; word-wrap:break-word; color:#e8e8f4; }
 #chatLog .msg.all b { color:#ffd166; }
 #chatLog .msg.team b { color:#7fb8ff; }
@@ -89,8 +92,8 @@ canvas { position:fixed; display:block; }
 #chat.open #chatMsg { display:block; }
 #chatMsg input { width:100%; box-sizing:border-box; padding:6px 8px; background:#10111b; color:#fff; border:1px solid #44415f; border-radius:7px; font-size:12px; outline:none; pointer-events:auto; font-family:inherit; }
 #chatMsg input:focus { border-color:#8b7cff; }
-/* Lobide sohbet paneli sol üste taşınır; oyun sırasında sol altta kalır. */
-body.in-lobby #chat { top:12px; bottom:auto; }
+/* Lobide sohbet paneli oyun alanının sol üstüne taşınır; maçta sol altta kalır. */
+body.in-lobby #chat { top:var(--chat-top,12px); bottom:auto; }
 #leaveBtn { position:fixed; top:10px; right:10px; z-index:6; display:none; padding:7px 12px; background:rgba(180,50,60,.85); color:#fff; border:0; border-radius:8px; font-size:12px; font-weight:bold; cursor:pointer; font-family:inherit; }
 #leaveBtn:hover { background:rgba(210,60,70,.95); }
 </style>
@@ -1129,6 +1132,20 @@ function layout() {
   const left = Math.floor((w - cw) / 2), top = Math.floor((h - chh) / 2);
   for (const c of [view, hud]) { c.style.width = cw + 'px'; c.style.height = chh + 'px'; c.style.left = left + 'px'; c.style.top = top + 'px'; }
   hud.width = cw; hud.height = chh;
+  /* Sohbeti oyun çerçevesine sabitle ve oyunla birlikte ölçekle:
+     pencere/ekran oranı değişince siyah bantlarda veya ekranın altında kalmaz. */
+  const chatBox = document.getElementById('chat');
+  if (chatBox) {
+    const k = chh / 675;
+    const pad = Math.round(10 * k);
+    chatBox.style.setProperty('--chat-left', (left + pad) + 'px');
+    chatBox.style.setProperty('--chat-top', (top + pad) + 'px');
+    chatBox.style.setProperty('--chat-bottom', Math.round((h - top - chh) + 84 * k) + 'px');
+    const targetW = Math.max(170, Math.min(320, Math.round(250 * k)));
+    chatBox.style.width = Math.min(targetW, Math.round(w * 0.62)) + 'px';
+    chatBox.style.setProperty('--chat-log-max', Math.round(Math.max(52, Math.min(84, 66 * k))) + 'px');
+    chatBox.style.setProperty('--chat-open-max', Math.round(Math.max(70, Math.min(118, 92 * k))) + 'px');
+  }
 }
 window.addEventListener('resize', layout); layout();
 function mouseLocked() { return document.pointerLockElement === hud; }
@@ -1531,7 +1548,7 @@ function renderChat() {
   chatEl.classList.toggle('peek', !open && peek);
   if (!open && !peek) return;
   if (!chatOpen) chatEl.classList.remove('open');
-  const items = open ? chatMsgs : chatMsgs.slice(-4);
+  const items = open ? chatMsgs : chatMsgs.slice(-3);
   chatLog.innerHTML = items.length
     ? items.map(m => {
         const all = m.ch === 'a';
